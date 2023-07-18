@@ -122,7 +122,8 @@ public class Device {
 
             // Set request headers
             connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Authorization", activeUser.getAccessToken());
+            System.out.println("activeUser.getAccessToken(): " + activeUser.getAccessToken());
+            connection.setRequestProperty("Authorization", "Bearer " + activeUser.getAccessToken());
 
             // Create the request body
             String requestBody = "";
