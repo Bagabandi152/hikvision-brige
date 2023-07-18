@@ -9,8 +9,5 @@
         <module name="hikvision-brige" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="hikvision-brige" target="17" />
-    </bytecodeTargetLevel>
   </component>
 </project>
