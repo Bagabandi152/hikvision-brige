@@ -21,6 +21,7 @@ import java.net.URL;
 import java.util.Optional;
 
 import mn.sync.hikvisionbrige.constants.FinalVariables;
+import mn.sync.hikvisionbrige.holders.CookieHolder;
 import mn.sync.hikvisionbrige.holders.UserHolder;
 import mn.sync.hikvisionbrige.models.ActiveUser;
 import mn.sync.hikvisionbrige.models.InstShortInfo;
@@ -123,7 +124,8 @@ public class Login extends Application {
                                 assert step3Object != null;
                                 if(step3Object.getString("responsecode").equals("success")){
                                     JSONObject successData = step3Object.getJSONObject("data");
-                                    UserHolder.getInstance().setActiveUser(new ActiveUser(successData.getInt("id"), successData.getInt("empid"), successData.getString("name"),successData.getString("email"), successData.getString("access_token")));
+                                    UserHolder.getInstance().setActiveUser(new ActiveUser(successData.getInt("id"), successData.getInt("empid"), successData.getString("name"),successData.getString("email")));
+                                    CookieHolder.getInstance().setCookie("login", successData.getString("access_token"));
                                     loginSuccess(userName, primaryStage);
                                 }else{
                                     loginError(step3Object.getString("responsecode"));

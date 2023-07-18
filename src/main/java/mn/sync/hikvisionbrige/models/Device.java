@@ -3,11 +3,12 @@ package mn.sync.hikvisionbrige.models;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import mn.sync.hikvisionbrige.constants.FinalVariables;
-import mn.sync.hikvisionbrige.holders.UserHolder;
+import mn.sync.hikvisionbrige.holders.CookieHolder;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -22,13 +23,13 @@ public class Device {
     Integer id;
     String ipAddress;
     String name;
-    String location;
+    String serial;
 
-    public Device(Integer id, String ipAddress, String name, String location) {
+    public Device(Integer id, String ipAddress, String name, String serial) {
         this.id = id;
         this.ipAddress = ipAddress;
         this.name = name;
-        this.location = location;
+        this.serial = serial;
     }
 
     public Device(){
@@ -89,18 +90,18 @@ public class Device {
     /**
      * get field
      *
-     * @return location
+     * @return serial
      */
-    public String getLocation() {
-        return this.location;
+    public String getSerial() {
+        return this.serial;
     }
 
     /**
      * set field
      *
      */
-    public void setLocation(String location) {
-        this.location = location;
+    public void setSerial(String serial) {
+        this.serial = serial;
     }
 
     @Override
@@ -109,7 +110,9 @@ public class Device {
     }
 
     public static ObservableList<Device> getDeviceList() {
-        ActiveUser activeUser = UserHolder.getInstance().getActiveUser();
+        ObservableList<Device> list = FXCollections.observableArrayList();
+        String cookieValue = CookieHolder.getInstance().getCookie("login");
+
         try {
             // Create the URL object
             URL url = new URL(FinalVariables.ERP_URL + "timerpt/device");
@@ -122,18 +125,8 @@ public class Device {
 
             // Set request headers
             connection.setRequestProperty("Content-Type", "application/json");
-            System.out.println("activeUser.getAccessToken(): " + activeUser.getAccessToken());
-            connection.setRequestProperty("Authorization", "Bearer " + activeUser.getAccessToken());
-
-            // Create the request body
-            String requestBody = "";
-
-            // Enable output and send the request body
-            connection.setDoOutput(true);
-            OutputStream outputStream = connection.getOutputStream();
-            outputStream.write(requestBody.getBytes());
-            outputStream.flush();
-            outputStream.close();
+            System.out.println("cookieValue: " + cookieValue);
+            connection.setRequestProperty("Authorization", "Bearer " + cookieValue);
 
             // Get the response code
             int responseCode = connection.getResponseCode();
@@ -149,7 +142,15 @@ public class Device {
                 reader.close();
 
                 // Print the response
-                System.out.println("Response23: " + response);
+                System.out.println("Device list: " + response);
+                JSONArray jsonArray = new JSONArray(response.toString());
+                for(int i = 0; i < jsonArray.length(); i++){
+                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    if(jsonObject.getString("ipaddress").isBlank() || jsonObject.getString("ipaddress").isEmpty()){
+                        continue;
+                    }
+                    list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial")));
+                }
 
                 // Close the connection
                 connection.disconnect();
@@ -157,11 +158,6 @@ public class Device {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        Device d1 = new Device(1,"172.24.30.13", "DS-K1T343MWX", "UB Office");
-        Device d2 = new Device(2,"172.24.30.137", "DS-7604NI-Q1/4P", "Site Office");
-
-        ObservableList<Device> list = FXCollections.observableArrayList(d1,d2);
 
         return list;
     }

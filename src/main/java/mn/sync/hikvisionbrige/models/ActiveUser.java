@@ -12,14 +12,12 @@ public class ActiveUser {
     Integer empId;
     String name;
     String email;
-    String accessToken;
 
-    public ActiveUser(Integer userId, Integer empId, String name, String email, String accessToken) {
+    public ActiveUser(Integer userId, Integer empId, String name, String email) {
         this.userId = userId;
         this.empId = empId;
         this.name = name;
         this.email = email;
-        this.accessToken = accessToken;
     }
 
 
@@ -94,23 +92,5 @@ public class ActiveUser {
      */
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    /**
-     * get field
-     *
-     * @return accessToken
-     */
-    public String getAccessToken() {
-        return this.accessToken;
-    }
-
-    /**
-     * set field
-     *
-     * @param accessToken
-     */
-    public void setAccessToken(String accessToken) {
-        this.accessToken = accessToken;
     }
 }

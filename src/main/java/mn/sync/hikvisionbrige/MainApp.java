@@ -19,8 +19,6 @@ import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.constants.FinalVariables;
-import mn.sync.hikvisionbrige.holders.UserHolder;
-import mn.sync.hikvisionbrige.models.ActiveUser;
 import mn.sync.hikvisionbrige.models.Device;
 import okhttp3.*;
 
@@ -40,6 +38,8 @@ public class MainApp {
         ComboBox<Device> comboBox = new ComboBox<>();
         comboBox.setItems(Device.getDeviceList());
         comboBox.setPromptText("Select . . .");
+        comboBox.setMaxWidth(295);
+        comboBox.getStylesheets().add("custom-combobox.css");
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             BASE_URL = "http://" + newValue.getIpAddress();
             comboBox.setStyle("-fx-border-color: none;");

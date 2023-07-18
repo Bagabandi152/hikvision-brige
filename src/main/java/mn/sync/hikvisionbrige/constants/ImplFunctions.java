@@ -1,9 +1,6 @@
 package mn.sync.hikvisionbrige.constants;
 
-
 import org.json.JSONObject;
-
-import java.util.Map;
 
 /**
  * @author Bagaa
