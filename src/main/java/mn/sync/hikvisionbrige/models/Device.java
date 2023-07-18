@@ -4,7 +4,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import mn.sync.hikvisionbrige.constants.FinalVariables;
 import mn.sync.hikvisionbrige.holders.UserHolder;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -111,52 +110,52 @@ public class Device {
 
     public static ObservableList<Device> getDeviceList() {
         ActiveUser activeUser = UserHolder.getInstance().getActiveUser();
-//        try {
-//            // Create the URL object
-//            URL url = new URL(FinalVariables.ERP_URL + "timerpt/device");
-//
-//            // Create the HttpURLConnection object
-//            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-//
-//            // Set the request method to GET
-//            connection.setRequestMethod("GET");
-//
-//            // Set request headers
-//            connection.setRequestProperty("Content-Type", "application/json");
-//            connection.setRequestProperty("Authorization", activeUser.getAccessToken());
-//
-//            // Create the request body
-//            String requestBody = "";
-//
-//            // Enable output and send the request body
-//            connection.setDoOutput(true);
-//            OutputStream outputStream = connection.getOutputStream();
-//            outputStream.write(requestBody.getBytes());
-//            outputStream.flush();
-//            outputStream.close();
-//
-//            // Get the response code
-//            int responseCode = connection.getResponseCode();
-//            System.out.println("Response Code: " + responseCode);
-//            if(responseCode == 200){
-//                // Read the response
-//                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-//                String line;
-//                StringBuilder response = new StringBuilder();
-//                while ((line = reader.readLine()) != null) {
-//                    response.append(line);
-//                }
-//                reader.close();
-//
-//                // Print the response
-//                System.out.println("Response23: " + response);
-//
-//                // Close the connection
-//                connection.disconnect();
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
+        try {
+            // Create the URL object
+            URL url = new URL(FinalVariables.ERP_URL + "timerpt/device");
+
+            // Create the HttpURLConnection object
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+            // Set the request method to GET
+            connection.setRequestMethod("GET");
+
+            // Set request headers
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Authorization", activeUser.getAccessToken());
+
+            // Create the request body
+            String requestBody = "";
+
+            // Enable output and send the request body
+            connection.setDoOutput(true);
+            OutputStream outputStream = connection.getOutputStream();
+            outputStream.write(requestBody.getBytes());
+            outputStream.flush();
+            outputStream.close();
+
+            // Get the response code
+            int responseCode = connection.getResponseCode();
+            System.out.println("Response Code: " + responseCode);
+            if(responseCode == 200){
+                // Read the response
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String line;
+                StringBuilder response = new StringBuilder();
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                // Print the response
+                System.out.println("Response23: " + response);
+
+                // Close the connection
+                connection.disconnect();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         Device d1 = new Device(1,"172.24.30.13", "DS-K1T343MWX", "UB Office");
         Device d2 = new Device(2,"172.24.30.137", "DS-7604NI-Q1/4P", "Site Office");

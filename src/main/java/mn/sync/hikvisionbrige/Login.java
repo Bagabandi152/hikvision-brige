@@ -20,11 +20,14 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Optional;
 
+import mn.sync.hikvisionbrige.constants.FinalVariables;
 import mn.sync.hikvisionbrige.holders.UserHolder;
 import mn.sync.hikvisionbrige.models.ActiveUser;
 import mn.sync.hikvisionbrige.models.InstShortInfo;
 
-import org.json.*;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 /**
  * @author Bagaa
@@ -180,7 +183,7 @@ public class Login extends Application {
     private JSONObject validateLogin(String email, String password, Integer instId, Integer step, String stepToken) {
         try {
             // Create the URL object
-            URL url = new URL("https://erp.sync.mn/api/auth/login");
+            URL url = new URL(FinalVariables.ERP_URL + "auth/login");
 
             // Create the HttpURLConnection object
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
