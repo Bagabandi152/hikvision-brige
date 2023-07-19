@@ -1,5 +1,7 @@
 package mn.sync.hikvisionbrige.constants;
 
+import org.json.JSONObject;
+
 /**
  * @author Bagaa
  * @project hikvision-brige
@@ -9,6 +11,9 @@ package mn.sync.hikvisionbrige.constants;
  */
 public interface Functions {
     public default String objectToJson(Object object) {
-        return null;
+        JSONObject jsonObject = new JSONObject();
+        return jsonObject.toString();
     }
+    public String DigestApiService(String API, String requestBody, String type);
+    public String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
 }

@@ -3,8 +3,10 @@ package mn.sync.hikvisionbrige.models;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import mn.sync.hikvisionbrige.constants.FinalVariables;
+import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -111,51 +113,20 @@ public class Device {
 
     public static ObservableList<Device> getDeviceList() {
         ObservableList<Device> list = FXCollections.observableArrayList();
-        String cookieValue = CookieHolder.getInstance().getCookie("login");
+        String response = ImplFunctions.functions.ErpApiService("timerpt/device","GET","application/json","",true);
 
+        // Print the response
+        JSONArray jsonArray = null;
         try {
-            // Create the URL object
-            URL url = new URL(FinalVariables.ERP_URL + "timerpt/device");
-
-            // Create the HttpURLConnection object
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-            // Set the request method to GET
-            connection.setRequestMethod("GET");
-
-            // Set request headers
-            connection.setRequestProperty("Content-Type", "application/json");
-            System.out.println("cookieValue: " + cookieValue);
-            connection.setRequestProperty("Authorization", "Bearer " + cookieValue);
-
-            // Get the response code
-            int responseCode = connection.getResponseCode();
-            System.out.println("Response Code: " + responseCode);
-            if(responseCode == 200){
-                // Read the response
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                String line;
-                StringBuilder response = new StringBuilder();
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
-                }
-                reader.close();
-
-                // Print the response
-                System.out.println("Device list: " + response);
-                JSONArray jsonArray = new JSONArray(response.toString());
-                for(int i = 0; i < jsonArray.length(); i++){
-                    JSONObject jsonObject = jsonArray.getJSONObject(i);
-                    if(jsonObject.getString("ipaddress").isBlank() || jsonObject.getString("ipaddress").isEmpty()){
-                        continue;
-                    }
+            jsonArray = new JSONArray(response.toString());
+            for(int i = 0; i < jsonArray.length(); i++){
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                if(!jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty() && jsonObject.getString("ipaddress") != "null"){
+                    System.out.println("ipaddress: " + jsonObject.getString("ipaddress"));
                     list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial")));
                 }
-
-                // Close the connection
-                connection.disconnect();
             }
-        } catch (Exception e) {
+        } catch (JSONException e) {
             e.printStackTrace();
         }
 

@@ -1,7 +1,5 @@
 package mn.sync.hikvisionbrige;
 
-import com.burgstaller.okhttp.digest.Credentials;
-import com.burgstaller.okhttp.digest.DigestAuthenticator;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
@@ -18,14 +16,15 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-import mn.sync.hikvisionbrige.constants.FinalVariables;
+import mn.sync.hikvisionbrige.constants.ImplFunctions;
+import mn.sync.hikvisionbrige.holders.DeviceHolder;
 import mn.sync.hikvisionbrige.models.Device;
-import okhttp3.*;
+import org.json.JSONException;
+import org.json.JSONObject;
 
-import java.io.IOException;
-import java.net.Authenticator;
-import java.net.PasswordAuthentication;
-import java.util.Objects;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 
 
 public class MainApp {
@@ -33,6 +32,7 @@ public class MainApp {
     private static String BASE_URL = "";
 
     public static void start(Stage stage) {
+        DeviceHolder deviceHolder = DeviceHolder.getInstance();
 
         //Create ComboBox
         ComboBox<Device> comboBox = new ComboBox<>();
@@ -43,6 +43,7 @@ public class MainApp {
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             BASE_URL = "http://" + newValue.getIpAddress();
             comboBox.setStyle("-fx-border-color: none;");
+            deviceHolder.setDevice(newValue);
         });
 
         //Create root
@@ -76,45 +77,46 @@ public class MainApp {
                 return;
             }
 
-            // Set Digest authentication credentials
-            Authenticator.setDefault(new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(FinalVariables.USER_NAME, FinalVariables.PASS_WORD.toCharArray());
+            String startDate = "";
+            String endDate = "";
+
+            LocalDateTime now = LocalDateTime.now();
+
+            // Set the time zone offset to +07:00
+            ZoneOffset zoneOffset = ZoneOffset.ofHours(7);
+
+            // Create a DateTimeFormatter with the desired format
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+
+            // Format the current date and time to a string
+            endDate = now.atOffset(zoneOffset).format(formatter);
+
+            Device activeDevice = deviceHolder.getDevice();
+            String lastUploadRes = ImplFunctions.functions.ErpApiService("deviceupload/getlastupload","POST","application/json","{\"deviceid\":" + activeDevice.getId(),true);
+            System.out.println("lastUploadRes: " + lastUploadRes);
+            if(lastUploadRes == null || (lastUploadRes != null && lastUploadRes.isEmpty())){
+                // Subtract 1 month from the current date
+                LocalDateTime oneMonthAgo = now.minusMonths(1);
+
+                // Format the date and time to a string
+                startDate = oneMonthAgo.atOffset(zoneOffset).format(formatter);
+            }else{
+                try {
+                    JSONObject lastUpload = new JSONObject(lastUploadRes.toString());
+                    String lastUploadDate = lastUpload.getString("uploaddate");
+                    LocalDateTime dateTime = LocalDateTime.parse(lastUploadDate, formatter);
+                    startDate = dateTime.atOffset(zoneOffset).format(formatter);
+                } catch (JSONException ex) {
+                    ex.printStackTrace();
                 }
-            });
-
-            // Create OkHttpClient
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD)))
-                    .build();
-
-            // Define the request body
-            MediaType mediaType = MediaType.parse("application/json");
-            String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"2023-07-01T00:00:00+07:00\",\"endTime\":\"2023-07-31T00:00:00+07:00\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-
-            // Create the request
-            RequestBody body = RequestBody.create(requestBody, mediaType);
-            Request request = new Request.Builder()
-                    .url(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json")
-                    .post(body)
-                    .build();
-
-            try {
-                // Send the request
-                Response response = client.newCall(request).execute();
-
-                // Check if the request was successful
-                if (response.isSuccessful()) {
-                    // Read the response body
-                    String responseBody = Objects.requireNonNull(response.body()).string();
-                    System.out.println(responseBody);
-                } else {
-                    System.out.println("Request failed with status code: " + response.code());
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
             }
+            System.out.println("startDate: " + startDate);
+            System.out.println("endDate: " + endDate);
+
+            String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
+            String responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json",requestBody,"application/json");
+            System.out.println(responseBody);
+
             BASE_URL = "";
         };
         syncBtn.setOnAction(syncEvent);
