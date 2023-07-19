@@ -1,5 +1,6 @@
 package mn.sync.hikvisionbrige.constants;
 
+import javafx.scene.control.Alert;
 import org.json.JSONObject;
 
 /**
@@ -10,10 +11,12 @@ import org.json.JSONObject;
  * @definition
  */
 public interface Functions {
-    public default String objectToJson(Object object) {
+    default String objectToJson(Object object) {
         JSONObject jsonObject = new JSONObject();
         return jsonObject.toString();
     }
-    public String DigestApiService(String API, String requestBody, String type);
-    public String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
+    String DigestApiService(String API, String requestBody, String type);
+    String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
+    void showAlert(String title, String headerText, String msg, Alert.AlertType alertType);
+    String convertToBase64(String imageData);
 }

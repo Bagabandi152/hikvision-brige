@@ -5,10 +5,9 @@ import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
+import javafx.scene.control.*;
+//import javafx.scene.image.Image;
+//import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -19,12 +18,16 @@ import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.DeviceHolder;
 import mn.sync.hikvisionbrige.models.Device;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.*;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+//import java.util.Base64;
 
 
 public class MainApp {
@@ -41,7 +44,9 @@ public class MainApp {
         comboBox.setMaxWidth(295);
         comboBox.getStylesheets().add("custom-combobox.css");
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            BASE_URL = "http://" + newValue.getIpAddress();
+            if(newValue != null){
+                BASE_URL = "http://" + newValue.getIpAddress();
+            }
             comboBox.setStyle("-fx-border-color: none;");
             deviceHolder.setDevice(newValue);
         });
@@ -78,12 +83,12 @@ public class MainApp {
             }
 
             String startDate = "";
-            String endDate = "";
+            String endDate;
 
             LocalDateTime now = LocalDateTime.now();
 
-            // Set the time zone offset to +07:00
-            ZoneOffset zoneOffset = ZoneOffset.ofHours(7);
+            // Set the time zone offset to +08:00
+            ZoneOffset zoneOffset = ZoneOffset.ofHours(8);
 
             // Create a DateTimeFormatter with the desired format
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
@@ -92,9 +97,8 @@ public class MainApp {
             endDate = now.atOffset(zoneOffset).format(formatter);
 
             Device activeDevice = deviceHolder.getDevice();
-            String lastUploadRes = ImplFunctions.functions.ErpApiService("deviceupload/getlastupload","POST","application/json","{\"deviceid\":" + activeDevice.getId(),true);
-            System.out.println("lastUploadRes: " + lastUploadRes);
-            if(lastUploadRes == null || (lastUploadRes != null && lastUploadRes.isEmpty())){
+            String lastUploadRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getlastupload","POST","application/json","{\"deviceid\":" + activeDevice.getId() + "}",true);
+            if(lastUploadRes == null || lastUploadRes.isEmpty()){
                 // Subtract 1 month from the current date
                 LocalDateTime oneMonthAgo = now.minusMonths(1);
 
@@ -102,9 +106,10 @@ public class MainApp {
                 startDate = oneMonthAgo.atOffset(zoneOffset).format(formatter);
             }else{
                 try {
-                    JSONObject lastUpload = new JSONObject(lastUploadRes.toString());
+                    JSONObject lastUpload = new JSONObject(lastUploadRes);
                     String lastUploadDate = lastUpload.getString("uploaddate");
-                    LocalDateTime dateTime = LocalDateTime.parse(lastUploadDate, formatter);
+                    DateTimeFormatter simpleFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+                    LocalDateTime dateTime = LocalDateTime.parse(lastUploadDate, simpleFormatter);
                     startDate = dateTime.atOffset(zoneOffset).format(formatter);
                 } catch (JSONException ex) {
                     ex.printStackTrace();
@@ -115,15 +120,69 @@ public class MainApp {
 
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
             String responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json",requestBody,"application/json");
-            System.out.println(responseBody);
 
-            BASE_URL = "";
+            JSONArray sentArray = new JSONArray();
+            try {
+                JSONObject acsEvent = new JSONObject(responseBody).getJSONObject("AcsEvent");
+                if(acsEvent.has("InfoList")){
+                    JSONArray responseJson = new JSONObject(responseBody).getJSONObject("AcsEvent").getJSONArray("InfoList");
+                    for(int i = 0; i < responseJson.length(); i++){
+                        JSONObject jo = responseJson.getJSONObject(i);
+                        JSONObject mapJo = new JSONObject();
+                        mapJo.put("personid", jo.getInt("employeeNoString"));
+                        OffsetDateTime offsetDateTime = OffsetDateTime.parse(jo.getString("time"));
+                        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        mapJo.put("time", offsetDateTime.format(dateFormat));
+                        sentArray.put(mapJo);
+                    }
+                }
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
+            String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata","POST","application/json","{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}",true);
+            if(uploadResponse == null || uploadResponse.isEmpty() || uploadResponse.isBlank()){
+                ImplFunctions.functions.showAlert("Error Message","", "When upload time, occurred error.", Alert.AlertType.ERROR);
+                BASE_URL = "";
+                comboBox.valueProperty().set(null);
+                comboBox.setPromptText("Select . . .");
+                return;
+            }
+            ImplFunctions.functions.showAlert("Success Message","", "Successfully synced time data.", Alert.AlertType.INFORMATION);
         };
         syncBtn.setOnAction(syncEvent);
         hBox.getChildren().add(syncBtn);
 
         //Create Button to add new data
         Button newBtn = new Button("New");
+        EventHandler<ActionEvent> addEmpEvent = e -> {
+            if(BASE_URL.isEmpty()){
+                comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                return;
+            }
+
+            String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
+            String captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData",reqBody,"text/plain");
+
+//            String[] lines = captureRes.split("\n");
+//            StringBuilder stringBuilder = new StringBuilder();
+            try {
+//                for(int i = 0; i < lines.length; i++){
+//                    stringBuilder.append(lines[i]);
+//                    stringBuilder.append("\n");
+//                }
+                FileWriter fileWriter = new FileWriter("file.jpeg");
+                fileWriter.write(captureRes);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+
+//            System.out.println("outputBuilder.toString(): " + stringBuilder);
+//            byte[] imageBytes = Base64.getDecoder().decode("data:image/jpeg;base64," + ImplFunctions.functions.convertToBase64(outputBuilder.toString()));
+//            Image image = new Image(new ByteArrayInputStream(imageBytes));
+//            ImageView imageView = new ImageView(image);
+//            root.getChildren().add(imageView);
+        };
+        newBtn.setOnAction(addEmpEvent);
         hBox.getChildren().add(newBtn);
         root.getChildren().add(hBox);
 

@@ -13,14 +13,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Optional;
 
-import mn.sync.hikvisionbrige.constants.FinalVariables;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
 import mn.sync.hikvisionbrige.holders.UserHolder;
@@ -77,6 +71,9 @@ public class Login extends Application {
         });
         gridPane.add(passwordLabel, 0, 1);
         gridPane.add(passwordField, 1, 1);
+
+        usernameTextField.setText("Bagabandi@sync.mn");
+        passwordField.setText("Bagaa010520");
 
         // Add Login button
         Button loginButton = new Button("Login");
@@ -151,7 +148,6 @@ public class Login extends Application {
         JSONArray instList = null;
         try {
             instList = new JSONArray(stepObject.getJSONObject("data").getString("insts"));
-            System.out.println("instList" + instList);
 
             gridPane.getChildren().clear();
             gridPane.setPadding(new Insets(30));
@@ -220,7 +216,7 @@ public class Login extends Application {
         if(!authCode.isEmpty()){
             requestBody = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\", \"instid\":" + instId + ", \"step\":" + step + ",\"steptoken\":\"" + stepToken + "\", \"authcode\":\"" + authCode + "\"}";
         }
-        String response = ImplFunctions.functions.ErpApiService("auth/login","POST","application/json",requestBody,false);
+        String response = ImplFunctions.functions.ErpApiService("/auth/login","POST","application/json",requestBody,false);
         try {
             if(response.isEmpty()){
                 return null;

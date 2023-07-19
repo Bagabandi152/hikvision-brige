@@ -2,6 +2,7 @@ package mn.sync.hikvisionbrige.constants;
 
 import com.burgstaller.okhttp.digest.Credentials;
 import com.burgstaller.okhttp.digest.DigestAuthenticator;
+import javafx.scene.control.Alert;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
 import okhttp3.*;
 
@@ -13,6 +14,8 @@ import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Objects;
 
 /**
@@ -43,6 +46,7 @@ public class ImplFunctions {
             MediaType mediaType = MediaType.parse(type);
 
             // Create the request
+            System.out.println("Digest request body: " + requestBody);
             RequestBody body = RequestBody.create(requestBody, mediaType);
             Request request = new Request.Builder()
                     .url(API)
@@ -57,15 +61,16 @@ public class ImplFunctions {
                 // Check if the request was successful
                 if (response.isSuccessful()) {
                     // Read the response body
+//                    responseBody = Objects.requireNonNull(response.body()).string();
                     responseBody = Objects.requireNonNull(response.body()).string();
-                    System.out.println(responseBody);
+                    System.out.println("Digest response: " + responseBody);
                 } else {
                     System.out.println("Request failed with status code: " + response.code());
                 }
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
-            return requestBody;
+            return responseBody;
         }
 
         @Override
@@ -85,16 +90,15 @@ public class ImplFunctions {
                 connection.setRequestProperty("Content-Type", type);
                 if(auth){
                     String cookieValue = CookieHolder.getInstance().getCookie("login");
-                    System.out.println("cookieValue: " + cookieValue);
                     connection.setRequestProperty("Authorization", "Bearer " + cookieValue);
                 }
 
                 // Create the request body
                 if(!requestBody.isEmpty()){
                     // Enable output and send the request body
-                    System.out.println("requestBody: " + requestBody);
                     connection.setDoOutput(true);
                     OutputStream outputStream = connection.getOutputStream();
+                    System.out.println("ERP requestBody: " + requestBody);
                     outputStream.write(requestBody.getBytes());
                     outputStream.flush();
                     outputStream.close();
@@ -102,7 +106,7 @@ public class ImplFunctions {
 
                 // Get the response code
                 int responseCode = connection.getResponseCode();
-                System.out.println("Response Code: " + responseCode);
+                System.out.println("ERP response code: " + responseCode);
                 if(responseCode == 200){
                     // Read the response
                     BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -114,7 +118,7 @@ public class ImplFunctions {
                     reader.close();
 
                     // Print the response
-                    System.out.println("Response: " + response);
+                    System.out.println("ERP response: " + response);
                     strResponse = response.toString();
 
                     // Close the connection
@@ -125,6 +129,22 @@ public class ImplFunctions {
             }
 
             return strResponse;
+        }
+
+        @Override
+        public void showAlert(String title, String headerText, String msg, Alert.AlertType alertType) {
+            Alert alert = new Alert(alertType);
+            alert.setTitle(title);
+            alert.setHeaderText(headerText);
+            alert.setContentText(msg);
+            alert.showAndWait();
+        }
+
+        @Override
+        public String convertToBase64(String imageData) {
+            byte[] imageBytes = imageData.getBytes(StandardCharsets.ISO_8859_1);
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+            return base64Image;
         }
     };
 }
