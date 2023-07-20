@@ -170,50 +170,59 @@ public class MainApp {
             String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
             DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData",reqBody,"text/plain");
 
-            //Create response binary text file
-            String fileName = "tmp/CaptureFaceData_" + activeUser.getEmpId() + "_" + System.currentTimeMillis() + "_" + ((int)(Math.random() * 99999) + 10000);
-            Path path = Paths.get(fileName + ".txt");
-            try {
-                Files.write(path, (byte[]) captureRes.getBody());
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+            if("application/xml".equals(captureRes.getContentType())){
+                JSONObject capBody = (JSONObject) captureRes.getBody();
+                if(capBody.has("CaptureFaceData") && capBody.getJSONObject("CaptureFaceData").has("captureProgress") && capBody.getJSONObject("CaptureFaceData").getInt("captureProgress") == 0){
+                    ImplFunctions.functions.showAlert("Warning", "", "Capture face data not found. Try again.", Alert.AlertType.WARNING);
+                }else{
+                    ImplFunctions.functions.showAlert("Error", "", "When capture face data, occurred error.\n\nResponse:\n" + captureRes.getBody(), Alert.AlertType.ERROR);
+                }
+            }else{
+                //Create response binary text file
+                String fileName = "tmp/CaptureFaceData_" + activeUser.getEmpId() + "_" + System.currentTimeMillis() + "_" + ((int)(Math.random() * 99999) + 10000);
+                Path path = Paths.get(fileName + ".txt");
+                try {
+                    Files.write(path, (byte[]) captureRes.getBody());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
 
-            Path sourcePath = Paths.get(fileName + ".txt");
-            Path destinationPath = Paths.get(fileName + ".jpg");
-            try (var inputStream = Files.newInputStream(sourcePath);
-                 var outputStream = Files.newOutputStream(destinationPath, StandardOpenOption.CREATE)) {
+                Path sourcePath = Paths.get(fileName + ".txt");
+                Path destinationPath = Paths.get(fileName + ".jpg");
+                try (var inputStream = Files.newInputStream(sourcePath);
+                     var outputStream = Files.newOutputStream(destinationPath, StandardOpenOption.CREATE)) {
 
-                // Skip the first 14 lines
-                int linesToSkip = 14;
-                int newlineCount = 0;
-                int nextByte;
-                while (newlineCount < linesToSkip && (nextByte = inputStream.read()) != -1) {
-                    if (nextByte == '\n') {
-                        newlineCount++;
+                    // Skip the first 14 lines
+                    int linesToSkip = 14;
+                    int newlineCount = 0;
+                    int nextByte;
+                    while (newlineCount < linesToSkip && (nextByte = inputStream.read()) != -1) {
+                        if (nextByte == '\n') {
+                            newlineCount++;
+                        }
                     }
+
+                    // Copy the remaining content after skipping
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+
+                    Files.delete(sourcePath);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                 }
 
-                // Copy the remaining content after skipping
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
+                try {
+                    Image captureImage = new Image(new ByteArrayInputStream(Files.readAllBytes(destinationPath)));
+                    ImageView imageView = new ImageView(captureImage);
+                    imageView.setFitWidth(120);
+                    imageView.setFitHeight(180);
+                    root.getChildren().add(imageView);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                 }
-
-                Files.delete(sourcePath);
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-
-            try {
-                Image captureImage = new Image(new ByteArrayInputStream(Files.readAllBytes(destinationPath)));
-                ImageView imageView = new ImageView(captureImage);
-                imageView.setFitWidth(120);
-                imageView.setFitHeight(180);
-                root.getChildren().add(imageView);
-            } catch (IOException ex) {
-                ex.printStackTrace();
             }
         };
         newBtn.setOnAction(addEmpEvent);
@@ -222,7 +231,7 @@ public class MainApp {
 
         //Set config in stage
         stage.setResizable(false);
-        stage.setTitle(actInst.getInstShortNameEng() + "-Face Recog Terminal");
+        stage.setTitle(actInst.getInstShortNameEng() + " - Face Recog Terminal");
         Scene scene = new Scene(root, 345, 310);
         stage.setScene(scene);
         stage.show();

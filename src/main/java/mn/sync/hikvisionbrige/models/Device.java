@@ -114,7 +114,7 @@ public class Device {
             jsonArray = new JSONArray(response.toString());
             for(int i = 0; i < jsonArray.length(); i++){
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
-                if(!jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty() && jsonObject.getString("ipaddress") != "null"){
+                if( !jsonObject.isNull("ipaddress") && !jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty()){
                     list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial")));
                 }
             }

@@ -149,7 +149,8 @@ public class Login extends Application {
     public void chooseInst(Stage stage, GridPane gridPane, JSONObject stepObject, String userName, String password){
         JSONArray instList = null;
         try {
-            instList = new JSONArray(stepObject.getJSONObject("data").getString("insts"));
+            JSONObject jsonObject = stepObject.getJSONObject("data");
+            instList = jsonObject.getJSONArray("insts");
 
             gridPane.getChildren().clear();
             gridPane.setPadding(new Insets(30));

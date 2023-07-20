@@ -6,6 +6,7 @@ import javafx.scene.control.Alert;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
 import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
+import org.json.XML;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,7 +18,6 @@ import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Objects;
 
 /**
  * @author Bagaa
@@ -54,7 +54,6 @@ public class ImplFunctions {
                     .post(body)
                     .build();
 
-//            String responseBody = null;
             ResponseBody responseBody = null;
             DigestResponseData digestResponseData = new DigestResponseData();
             try {
@@ -73,7 +72,9 @@ public class ImplFunctions {
                             digestResponseData.setContentType(mediaTypeString);
                             if (mediaTypeString.startsWith("text/") || mediaTypeString.startsWith("application/json")) {
                                 digestResponseData.setBody(responseBody.string());
-                            } else {
+                            } else if(mediaTypeString.startsWith("application/xml")){
+                                digestResponseData.setBody(XML.toJSONObject(responseBody.string()));
+                            }else{
                                 digestResponseData.setBody(responseBody.bytes());
                             }
                         }
