@@ -2,6 +2,7 @@ package mn.sync.hikvisionbrige.models;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.control.Alert;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -111,7 +112,11 @@ public class Device {
         // Print the response
         JSONArray jsonArray = null;
         try {
-            jsonArray = new JSONArray(response.toString());
+            if(response == null){
+                ImplFunctions.functions.showAlert("Error", "", "When fetch device list from server, occurred error.", Alert.AlertType.ERROR);
+                return list;
+            }
+            jsonArray = new JSONArray(response);
             for(int i = 0; i < jsonArray.length(); i++){
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
                 if( !jsonObject.isNull("ipaddress") && !jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty()){

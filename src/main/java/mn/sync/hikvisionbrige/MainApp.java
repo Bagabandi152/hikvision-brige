@@ -17,12 +17,10 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.DeviceHolder;
+import mn.sync.hikvisionbrige.holders.EmpHolder;
 import mn.sync.hikvisionbrige.holders.InstHolder;
 import mn.sync.hikvisionbrige.holders.UserHolder;
-import mn.sync.hikvisionbrige.models.ActiveUser;
-import mn.sync.hikvisionbrige.models.Device;
-import mn.sync.hikvisionbrige.models.DigestResponseData;
-import mn.sync.hikvisionbrige.models.InstShortInfo;
+import mn.sync.hikvisionbrige.models.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,24 +36,35 @@ import java.time.format.DateTimeFormatter;
 public class MainApp {
 
     private static String BASE_URL = "";
+    private static DeviceHolder deviceHolder = DeviceHolder.getInstance();
+    private static UserHolder userHolder = UserHolder.getInstance();
+    private static InstHolder instHolder = InstHolder.getInstance();
+    private static EmpHolder empHolder = EmpHolder.getInstance();
 
     public static void start(Stage stage) {
-        DeviceHolder deviceHolder = DeviceHolder.getInstance();
-        ActiveUser activeUser = UserHolder.getInstance().getActiveUser();
-        InstShortInfo actInst = InstHolder.getInstance().getInst();
 
         //Create ComboBox
         ComboBox<Device> comboBox = new ComboBox<>();
         comboBox.setItems(Device.getDeviceList());
         comboBox.setPromptText("Select . . .");
         comboBox.setMaxWidth(295);
-        comboBox.getStylesheets().add("custom-combobox.css");
+        comboBox.getStylesheets().add("CustomComboBox.css");
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if(newValue != null){
                 BASE_URL = "http://" + newValue.getIpAddress();
             }
             comboBox.setStyle("-fx-border-color: none;");
             deviceHolder.setDevice(newValue);
+        });
+
+        ComboBox<Employee> empComboBox = new ComboBox<>();
+        empComboBox.setItems(Employee.getEmpList());
+        empComboBox.setPromptText("Select . . .");
+        empComboBox.setMaxWidth(295);
+        empComboBox.getStylesheets().add("CustomComboBox.css");
+        empComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            empComboBox.setStyle("-fx-border-color: none;");
+            empHolder.setEmployee(newValue);
         });
 
         //Create root
@@ -72,6 +81,14 @@ public class MainApp {
         flowPane.getChildren().add(comboBox);
         root.getChildren().add(flowPane);
 
+        FlowPane empFlowPane = new FlowPane();
+        empFlowPane.setHgap(5);
+        Label empComboLabel = new Label("Select a employee:");
+        empComboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+        empFlowPane.getChildren().add(empComboLabel);
+        empFlowPane.getChildren().add(empComboBox);
+        root.getChildren().add(empFlowPane);
+
         //Create Separator
         Separator sep = new Separator();
         sep.setHalignment(HPos.CENTER);
@@ -82,7 +99,7 @@ public class MainApp {
         hBox.setSpacing(10);
 
         //Create Button to sync data
-        Button syncBtn = new Button("Sync");
+        Button syncBtn = new Button("Sync time data");
         EventHandler<ActionEvent> syncEvent = e -> {
             if(BASE_URL.isEmpty()){
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -160,10 +177,15 @@ public class MainApp {
         hBox.getChildren().add(syncBtn);
 
         //Create Button to add new data
-        Button newBtn = new Button("New");
+        Button newBtn = new Button("Add new employee");
         EventHandler<ActionEvent> addEmpEvent = e -> {
             if(BASE_URL.isEmpty()){
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                return;
+            }
+
+            if(empHolder.getEmployee() == null){
+                empComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
                 return;
             }
 
@@ -173,13 +195,13 @@ public class MainApp {
             if("application/xml".equals(captureRes.getContentType())){
                 JSONObject capBody = (JSONObject) captureRes.getBody();
                 if(capBody.has("CaptureFaceData") && capBody.getJSONObject("CaptureFaceData").has("captureProgress") && capBody.getJSONObject("CaptureFaceData").getInt("captureProgress") == 0){
-                    ImplFunctions.functions.showAlert("Warning", "", "Capture face data not found. Try again.", Alert.AlertType.WARNING);
+                    ImplFunctions.functions.showAlert("Warning", "", "Don't capture face data. Try again.", Alert.AlertType.WARNING);
                 }else{
                     ImplFunctions.functions.showAlert("Error", "", "When capture face data, occurred error.\n\nResponse:\n" + captureRes.getBody(), Alert.AlertType.ERROR);
                 }
             }else{
                 //Create response binary text file
-                String fileName = "tmp/CaptureFaceData_" + activeUser.getEmpId() + "_" + System.currentTimeMillis() + "_" + ((int)(Math.random() * 99999) + 10000);
+                String fileName = "tmp/CaptureFaceData_" + userHolder.getActiveUser().getEmpId() + "_" + System.currentTimeMillis() + "_" + ((int)(Math.random() * 99999) + 10000);
                 Path path = Paths.get(fileName + ".txt");
                 try {
                     Files.write(path, (byte[]) captureRes.getBody());
@@ -223,6 +245,8 @@ public class MainApp {
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
+
+                sendUserData(fileName);
             }
         };
         newBtn.setOnAction(addEmpEvent);
@@ -231,9 +255,25 @@ public class MainApp {
 
         //Set config in stage
         stage.setResizable(false);
-        stage.setTitle(actInst.getInstShortNameEng() + " - Face Recog Terminal");
-        Scene scene = new Scene(root, 345, 310);
+        stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
+        Scene scene = new Scene(root, 345, 360);
         stage.setScene(scene);
         stage.show();
+    }
+
+    public static void sendUserData(String fileName){
+        String requestBody = "{\n" +
+                "    \"UserInfo\": {\n" +
+                "        \"employeeNo\": \"9\",\n" +
+                "        \"name\": \"sularno\",\n" +
+                "        \"userType\": \"normal\",\n" +
+                "        \"Valid\": {\n" +
+                "            \"enable\": true,\n" +
+                "            \"beginTime\": \"2021-16-12T03:16:32\",\n" +
+                "            \"endTime\": \"2021-16-12T03:16:32\"\n" +
+                "        }\n" +
+                "    }\n" +
+                "}";
+//        DigestResponseData response = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json",requestBody,"application/json");
     }
 }

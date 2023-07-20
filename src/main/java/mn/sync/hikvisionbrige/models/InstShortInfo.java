@@ -134,6 +134,6 @@ public class InstShortInfo {
 
     @Override
     public String toString() {
-        return instName;
+        return instEngName;
     }
 }

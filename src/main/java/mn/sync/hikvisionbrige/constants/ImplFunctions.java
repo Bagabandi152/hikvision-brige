@@ -101,6 +101,10 @@ public class ImplFunctions {
 
                 // Set the request method to POST
                 connection.setRequestMethod(method);
+                if("POST".equals(method.toUpperCase()) || "PUT".equals(method.toUpperCase())){
+                    connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Length", String.valueOf(requestBody.length()));
+                }
 
                 // Set request headers
                 connection.setRequestProperty("Content-Type", type);
@@ -112,7 +116,6 @@ public class ImplFunctions {
                 // Create the request body
                 if(!requestBody.isEmpty()){
                     // Enable output and send the request body
-                    connection.setDoOutput(true);
                     OutputStream outputStream = connection.getOutputStream();
                     System.out.println("ERP requestBody: " + requestBody);
                     outputStream.write(requestBody.getBytes());
