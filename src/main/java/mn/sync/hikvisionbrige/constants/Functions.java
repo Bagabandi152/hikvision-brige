@@ -1,6 +1,7 @@
 package mn.sync.hikvisionbrige.constants;
 
 import javafx.scene.control.Alert;
+import mn.sync.hikvisionbrige.models.DigestResponseData;
 import org.json.JSONObject;
 
 /**
@@ -15,8 +16,9 @@ public interface Functions {
         JSONObject jsonObject = new JSONObject();
         return jsonObject.toString();
     }
-    String DigestApiService(String API, String requestBody, String type);
+    DigestResponseData DigestApiService(String API, String requestBody, String type);
     String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
     void showAlert(String title, String headerText, String msg, Alert.AlertType alertType);
     String convertToBase64(String imageData);
+    String getOSCode();
 }

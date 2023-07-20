@@ -4,6 +4,7 @@ import com.burgstaller.okhttp.digest.Credentials;
 import com.burgstaller.okhttp.digest.DigestAuthenticator;
 import javafx.scene.control.Alert;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
+import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
 
 import java.io.BufferedReader;
@@ -28,7 +29,7 @@ import java.util.Objects;
 public class ImplFunctions {
     public static Functions functions = new Functions() {
         @Override
-        public String DigestApiService(String API, String requestBody, String type) {
+        public DigestResponseData DigestApiService(String API, String requestBody, String type) {
             // Set Digest authentication credentials
             Authenticator.setDefault(new Authenticator() {
                 @Override
@@ -53,7 +54,9 @@ public class ImplFunctions {
                     .post(body)
                     .build();
 
-            String responseBody = null;
+//            String responseBody = null;
+            ResponseBody responseBody = null;
+            DigestResponseData digestResponseData = new DigestResponseData();
             try {
                 // Send the request
                 Response response = client.newCall(request).execute();
@@ -61,16 +64,28 @@ public class ImplFunctions {
                 // Check if the request was successful
                 if (response.isSuccessful()) {
                     // Read the response body
-//                    responseBody = Objects.requireNonNull(response.body()).string();
-                    responseBody = Objects.requireNonNull(response.body()).string();
-                    System.out.println("Digest response: " + responseBody);
+                    responseBody = response.body();
+                    if (responseBody != null) {
+                        MediaType contentType = responseBody.contentType();
+                        if (contentType != null) {
+                            String mediaTypeString = contentType.toString();
+                            System.out.println("mediaTypeString: " + mediaTypeString);
+                            digestResponseData.setContentType(mediaTypeString);
+                            if (mediaTypeString.startsWith("text/") || mediaTypeString.startsWith("application/json")) {
+                                digestResponseData.setBody(responseBody.string());
+                            } else {
+                                digestResponseData.setBody(responseBody.bytes());
+                            }
+                        }
+                    }
+                    System.out.println("Digest response: " + digestResponseData.getBody());
                 } else {
                     System.out.println("Request failed with status code: " + response.code());
                 }
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
-            return responseBody;
+            return digestResponseData;
         }
 
         @Override
@@ -145,6 +160,11 @@ public class ImplFunctions {
             byte[] imageBytes = imageData.getBytes(StandardCharsets.ISO_8859_1);
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             return base64Image;
+        }
+
+        @Override
+        public String getOSCode() {
+            return System.getProperty("os.name").toLowerCase();
         }
     };
 }

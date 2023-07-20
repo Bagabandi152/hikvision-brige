@@ -6,8 +6,8 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-//import javafx.scene.image.Image;
-//import javafx.scene.image.ImageView;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -17,17 +17,22 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.DeviceHolder;
+import mn.sync.hikvisionbrige.holders.InstHolder;
+import mn.sync.hikvisionbrige.holders.UserHolder;
+import mn.sync.hikvisionbrige.models.ActiveUser;
 import mn.sync.hikvisionbrige.models.Device;
+import mn.sync.hikvisionbrige.models.DigestResponseData;
+import mn.sync.hikvisionbrige.models.InstShortInfo;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.*;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-//import java.util.Base64;
 
 
 public class MainApp {
@@ -36,6 +41,8 @@ public class MainApp {
 
     public static void start(Stage stage) {
         DeviceHolder deviceHolder = DeviceHolder.getInstance();
+        ActiveUser activeUser = UserHolder.getInstance().getActiveUser();
+        InstShortInfo actInst = InstHolder.getInstance().getInst();
 
         //Create ComboBox
         ComboBox<Device> comboBox = new ComboBox<>();
@@ -119,13 +126,13 @@ public class MainApp {
             System.out.println("endDate: " + endDate);
 
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-            String responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json",requestBody,"application/json");
+            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json",requestBody,"application/json");
 
             JSONArray sentArray = new JSONArray();
             try {
-                JSONObject acsEvent = new JSONObject(responseBody).getJSONObject("AcsEvent");
+                JSONObject acsEvent = new JSONObject(responseBody.getBody().toString()).getJSONObject("AcsEvent");
                 if(acsEvent.has("InfoList")){
-                    JSONArray responseJson = new JSONObject(responseBody).getJSONObject("AcsEvent").getJSONArray("InfoList");
+                    JSONArray responseJson = new JSONObject(responseBody.getBody().toString()).getJSONObject("AcsEvent").getJSONArray("InfoList");
                     for(int i = 0; i < responseJson.length(); i++){
                         JSONObject jo = responseJson.getJSONObject(i);
                         JSONObject mapJo = new JSONObject();
@@ -161,26 +168,53 @@ public class MainApp {
             }
 
             String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
-            String captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData",reqBody,"text/plain");
+            DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData",reqBody,"text/plain");
 
-//            String[] lines = captureRes.split("\n");
-//            StringBuilder stringBuilder = new StringBuilder();
+            //Create response binary text file
+            String fileName = "tmp/CaptureFaceData_" + activeUser.getEmpId() + "_" + System.currentTimeMillis() + "_" + ((int)(Math.random() * 99999) + 10000);
+            Path path = Paths.get(fileName + ".txt");
             try {
-//                for(int i = 0; i < lines.length; i++){
-//                    stringBuilder.append(lines[i]);
-//                    stringBuilder.append("\n");
-//                }
-                FileWriter fileWriter = new FileWriter("file.jpeg");
-                fileWriter.write(captureRes);
+                Files.write(path, (byte[]) captureRes.getBody());
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
 
-//            System.out.println("outputBuilder.toString(): " + stringBuilder);
-//            byte[] imageBytes = Base64.getDecoder().decode("data:image/jpeg;base64," + ImplFunctions.functions.convertToBase64(outputBuilder.toString()));
-//            Image image = new Image(new ByteArrayInputStream(imageBytes));
-//            ImageView imageView = new ImageView(image);
-//            root.getChildren().add(imageView);
+            Path sourcePath = Paths.get(fileName + ".txt");
+            Path destinationPath = Paths.get(fileName + ".jpg");
+            try (var inputStream = Files.newInputStream(sourcePath);
+                 var outputStream = Files.newOutputStream(destinationPath, StandardOpenOption.CREATE)) {
+
+                // Skip the first 14 lines
+                int linesToSkip = 14;
+                int newlineCount = 0;
+                int nextByte;
+                while (newlineCount < linesToSkip && (nextByte = inputStream.read()) != -1) {
+                    if (nextByte == '\n') {
+                        newlineCount++;
+                    }
+                }
+
+                // Copy the remaining content after skipping
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+
+                Files.delete(sourcePath);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+
+            try {
+                Image captureImage = new Image(new ByteArrayInputStream(Files.readAllBytes(destinationPath)));
+                ImageView imageView = new ImageView(captureImage);
+                imageView.setFitWidth(120);
+                imageView.setFitHeight(180);
+                root.getChildren().add(imageView);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         };
         newBtn.setOnAction(addEmpEvent);
         hBox.getChildren().add(newBtn);
@@ -188,8 +222,8 @@ public class MainApp {
 
         //Set config in stage
         stage.setResizable(false);
-        stage.setTitle("FACE RECOGNITION TERMINAL");
-        Scene scene = new Scene(root, 345, 300);
+        stage.setTitle(actInst.getInstShortNameEng() + "-Face Recog Terminal");
+        Scene scene = new Scene(root, 345, 310);
         stage.setScene(scene);
         stage.show();
     }

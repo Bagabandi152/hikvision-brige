@@ -5,11 +5,12 @@ import mn.sync.hikvisionbrige.models.Device;
 /**
  * @author Bagaa
  * @project hikvision-brige
- * @created 19/07/2023 - 11:18 AM
+ * @created 18/07/2023 - 3:28 PM
  * @purpose
  * @definition
  */
-public class DeviceHolder {
+public final class DeviceHolder {
+
     private Device device;
     private final static DeviceHolder INSTANCE = new DeviceHolder();
 

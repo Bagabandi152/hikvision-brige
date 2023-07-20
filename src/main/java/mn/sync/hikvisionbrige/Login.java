@@ -17,6 +17,7 @@ import java.util.Optional;
 
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
+import mn.sync.hikvisionbrige.holders.InstHolder;
 import mn.sync.hikvisionbrige.holders.UserHolder;
 import mn.sync.hikvisionbrige.models.ActiveUser;
 import mn.sync.hikvisionbrige.models.InstShortInfo;
@@ -72,6 +73,7 @@ public class Login extends Application {
         gridPane.add(passwordLabel, 0, 1);
         gridPane.add(passwordField, 1, 1);
 
+        //Login form set default values
         usernameTextField.setText("Bagabandi@sync.mn");
         passwordField.setText("Bagaa010520");
 
@@ -163,6 +165,7 @@ public class Login extends Application {
             comboBox.setItems(observableList);
             comboBox.setPromptText("Select . . .");
             comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+                InstHolder.getInstance().setInst(newValue);
                 JSONObject step3Object;
                 try {
                     step3Object = validateLogin(userName, password, newValue.getInstId(), 3, stepObject.getString("steptoken"),"");
