@@ -108,7 +108,10 @@ public class Device {
     public static ObservableList<Device> getDeviceList() {
         ObservableList<Device> list = FXCollections.observableArrayList();
         String response = ImplFunctions.functions.ErpApiService("/timerpt/device","GET","application/json","",true);
-
+        if(response.startsWith("Request failed")){
+            ImplFunctions.functions.showAlert("Error", "",response, Alert.AlertType.ERROR);
+            return list;
+        }
         // Print the response
         JSONArray jsonArray = null;
         try {

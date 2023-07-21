@@ -27,8 +27,9 @@ public class Employee {
     String endUserName;
     String endUserNameEng;
     String prflNo;
+    String gender;
 
-    public Employee(Integer empId, Integer instId, String empFirstName, String empLastNameAbr, String empLastName, String empFirstNameEng, String empLastNameEng, String empLastNameAbrEng, String endUserName, String endUserNameEng, String prflNo) {
+    public Employee(Integer empId, Integer instId, String empFirstName, String empLastNameAbr, String empLastName, String empFirstNameEng, String empLastNameEng, String empLastNameAbrEng, String endUserName, String endUserNameEng, String prflNo, String gender) {
         this.empId = empId;
         this.instId = instId;
         this.empFirstName = empFirstName;
@@ -40,6 +41,7 @@ public class Employee {
         this.endUserName = endUserName;
         this.endUserNameEng = endUserNameEng;
         this.prflNo = prflNo;
+        this.gender = gender;
     }
 
     @Override
@@ -50,7 +52,10 @@ public class Employee {
     public static ObservableList<Employee> getEmpList() {
         ObservableList<Employee> list = FXCollections.observableArrayList();
         String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getactiveemps","POST","application/json","{}",true);
-
+        if(response.startsWith("Request failed")){
+            ImplFunctions.functions.showAlert("Error", "",response, Alert.AlertType.ERROR);
+            return list;
+        }
         // Print the response
         JSONArray jsonArray = null;
         try {
@@ -61,7 +66,7 @@ public class Employee {
             jsonArray = new JSONArray(response);
             for(int i = 0; i < jsonArray.length(); i++){
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
-                Employee newEmployee = new Employee(jsonObject.getInt("empid"), jsonObject.getInt("instid"), jsonObject.getString("empfname"), jsonObject.getString("emplname"), jsonObject.getString("emplnameabr"), jsonObject.getString("empfnameeng"), jsonObject.getString("emplnameeng"), jsonObject.getString("emplnameabreng"), jsonObject.getString("endusername"), jsonObject.getString("enduserengname"), !jsonObject.isNull("prflno") ? jsonObject.getString("prflno") : "");
+                Employee newEmployee = new Employee(jsonObject.getInt("empid"), jsonObject.getInt("instid"), jsonObject.getString("empfname"), jsonObject.getString("emplname"), jsonObject.getString("emplnameabr"), jsonObject.getString("empfnameeng"), jsonObject.getString("emplnameeng"), jsonObject.getString("emplnameabreng"), jsonObject.getString("endusername"), jsonObject.getString("enduserengname"), !jsonObject.isNull("prflno") ? jsonObject.getString("prflno") : "", jsonObject.getInt("gender") == 1 ? "male": jsonObject.getInt("gender") == 2 ? "female" : "unknown");
                 list.add(newEmployee);
             }
         } catch (JSONException e) {
@@ -267,5 +272,24 @@ public class Employee {
      */
     public void setPrflNo(String prflNo) {
         this.prflNo = prflNo;
+    }
+
+
+    /**
+     * get field
+     *
+     * @return gender
+     */
+    public String getGender() {
+        return this.gender;
+    }
+
+    /**
+     * set field
+     *
+     * @param gender
+     */
+    public void setGender(String gender) {
+        this.gender = gender;
     }
 }

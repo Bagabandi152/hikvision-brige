@@ -29,7 +29,7 @@ import java.util.Base64;
 public class ImplFunctions {
     public static Functions functions = new Functions() {
         @Override
-        public DigestResponseData DigestApiService(String API, String requestBody, String type) {
+        public DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod) {
             // Set Digest authentication credentials
             Authenticator.setDefault(new Authenticator() {
                 @Override
@@ -43,16 +43,34 @@ public class ImplFunctions {
                     .authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD)))
                     .build();
 
-            // Define the request body
+            // Define the request body (for POST requests)
             MediaType mediaType = MediaType.parse(type);
+            RequestBody body = null;
+            boolean isSentBody = requestMethod.toUpperCase().equals("POST") || requestMethod.toUpperCase().equals("PUT");
+            if (isSentBody) {
+                System.out.println("Digest request body: " + requestBody);
+                if(requestBody instanceof MultipartBody.Builder){
+                    body = ((MultipartBody.Builder) requestBody).build();
+                }else{
+                    body = RequestBody.create(String.valueOf(requestBody), mediaType);
+                }
+            }
 
             // Create the request
-            System.out.println("Digest request body: " + requestBody);
-            RequestBody body = RequestBody.create(requestBody, mediaType);
-            Request request = new Request.Builder()
-                    .url(API)
-                    .post(body)
-                    .build();
+            Request.Builder requestBuilder = new Request.Builder()
+                    .url(API);
+
+            if (requestMethod.toUpperCase().equals("POST") ) {
+                requestBuilder.post(body);
+            } else if (requestMethod.toUpperCase().equals("PUT") ) {
+                requestBuilder.put(body);
+            } else if (requestMethod.toUpperCase().equals("GET")) {
+                requestBuilder.get();
+            } else {
+                throw new IllegalArgumentException("Invalid request method: " + requestMethod);
+            }
+
+            Request request = requestBuilder.build();
 
             ResponseBody responseBody = null;
             DigestResponseData digestResponseData = new DigestResponseData();
@@ -72,9 +90,9 @@ public class ImplFunctions {
                             digestResponseData.setContentType(mediaTypeString);
                             if (mediaTypeString.startsWith("text/") || mediaTypeString.startsWith("application/json")) {
                                 digestResponseData.setBody(responseBody.string());
-                            } else if(mediaTypeString.startsWith("application/xml")){
+                            } else if (mediaTypeString.startsWith("application/xml")) {
                                 digestResponseData.setBody(XML.toJSONObject(responseBody.string()));
-                            }else{
+                            } else {
                                 digestResponseData.setBody(responseBody.bytes());
                             }
                         }
@@ -82,6 +100,8 @@ public class ImplFunctions {
                     System.out.println("Digest response: " + digestResponseData.getBody());
                 } else {
                     System.out.println("Request failed with status code: " + response.code());
+                    digestResponseData.setContentType("Request failed");
+                    digestResponseData.setBody(response.code());
                 }
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -142,6 +162,8 @@ public class ImplFunctions {
 
                     // Close the connection
                     connection.disconnect();
+                }else{
+                    strResponse = "Request failed with status code: " + responseCode;
                 }
             } catch (Exception e) {
                 e.printStackTrace();

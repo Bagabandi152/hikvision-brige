@@ -221,6 +221,10 @@ public class Login extends Application {
             requestBody = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\", \"instid\":" + instId + ", \"step\":" + step + ",\"steptoken\":\"" + stepToken + "\", \"authcode\":\"" + authCode + "\"}";
         }
         String response = ImplFunctions.functions.ErpApiService("/auth/login","POST","application/json",requestBody,false);
+        if(response.startsWith("Request failed")){
+            ImplFunctions.functions.showAlert("Error", "",response, Alert.AlertType.ERROR);
+            return null;
+        }
         try {
             if(response.isEmpty()){
                 return null;

@@ -16,7 +16,7 @@ public interface Functions {
         JSONObject jsonObject = new JSONObject();
         return jsonObject.toString();
     }
-    DigestResponseData DigestApiService(String API, String requestBody, String type);
+    DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod);
     String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
     void showAlert(String title, String headerText, String msg, Alert.AlertType alertType);
     String convertToBase64(String imageData);

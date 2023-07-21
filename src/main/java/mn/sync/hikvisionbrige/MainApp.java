@@ -21,6 +21,9 @@ import mn.sync.hikvisionbrige.holders.EmpHolder;
 import mn.sync.hikvisionbrige.holders.InstHolder;
 import mn.sync.hikvisionbrige.holders.UserHolder;
 import mn.sync.hikvisionbrige.models.*;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -98,6 +101,9 @@ public class MainApp {
         HBox hBox = new HBox();
         hBox.setSpacing(10);
 
+        //Create ImageView
+        ImageView imageView = new ImageView();
+
         //Create Button to sync data
         Button syncBtn = new Button("Sync time data");
         EventHandler<ActionEvent> syncEvent = e -> {
@@ -122,6 +128,10 @@ public class MainApp {
 
             Device activeDevice = deviceHolder.getDevice();
             String lastUploadRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getlastupload","POST","application/json","{\"deviceid\":" + activeDevice.getId() + "}",true);
+            if(lastUploadRes.startsWith("Request failed")){
+                ImplFunctions.functions.showAlert("Error", "",lastUploadRes, Alert.AlertType.ERROR);
+                return;
+            }
             if(lastUploadRes == null || lastUploadRes.isEmpty()){
                 // Subtract 1 month from the current date
                 LocalDateTime oneMonthAgo = now.minusMonths(1);
@@ -143,7 +153,11 @@ public class MainApp {
             System.out.println("endDate: " + endDate);
 
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json",requestBody,"application/json");
+            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json",requestBody,"application/json", "POST");
+            if(responseBody.getContentType().startsWith("Request failed")){
+                ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
+                return;
+            }
 
             JSONArray sentArray = new JSONArray();
             try {
@@ -164,6 +178,10 @@ public class MainApp {
                 ex.printStackTrace();
             }
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata","POST","application/json","{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}",true);
+            if(lastUploadRes.startsWith("Request failed")){
+                ImplFunctions.functions.showAlert("Error", "",lastUploadRes, Alert.AlertType.ERROR);
+                return;
+            }
             if(uploadResponse == null || uploadResponse.isEmpty() || uploadResponse.isBlank()){
                 ImplFunctions.functions.showAlert("Error Message","", "When upload time, occurred error.", Alert.AlertType.ERROR);
                 BASE_URL = "";
@@ -190,7 +208,11 @@ public class MainApp {
             }
 
             String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
-            DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData",reqBody,"text/plain");
+            DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData",reqBody,"text/plain", "POST");
+            if(captureRes.getContentType().startsWith("Request failed")){
+                ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + captureRes.getBody(), Alert.AlertType.ERROR);
+                return;
+            }
 
             if("application/xml".equals(captureRes.getContentType())){
                 JSONObject capBody = (JSONObject) captureRes.getBody();
@@ -238,7 +260,7 @@ public class MainApp {
 
                 try {
                     Image captureImage = new Image(new ByteArrayInputStream(Files.readAllBytes(destinationPath)));
-                    ImageView imageView = new ImageView(captureImage);
+                    imageView.setImage(captureImage);
                     imageView.setFitWidth(120);
                     imageView.setFitHeight(180);
                     root.getChildren().add(imageView);
@@ -246,7 +268,7 @@ public class MainApp {
                     ex.printStackTrace();
                 }
 
-                sendUserData(fileName);
+                sendUserData(fileName, imageView, root);
             }
         };
         newBtn.setOnAction(addEmpEvent);
@@ -261,19 +283,91 @@ public class MainApp {
         stage.show();
     }
 
-    public static void sendUserData(String fileName){
-        String requestBody = "{\n" +
-                "    \"UserInfo\": {\n" +
-                "        \"employeeNo\": \"9\",\n" +
-                "        \"name\": \"sularno\",\n" +
-                "        \"userType\": \"normal\",\n" +
-                "        \"Valid\": {\n" +
-                "            \"enable\": true,\n" +
-                "            \"beginTime\": \"2021-16-12T03:16:32\",\n" +
-                "            \"endTime\": \"2021-16-12T03:16:32\"\n" +
-                "        }\n" +
-                "    }\n" +
+    public static void sendUserData(String fileName, ImageView imageView, VBox root){
+
+        Integer employeeNo = empHolder.getEmployee().getEmpId();
+        String empName = empHolder.getEmployee().getEndUserNameEng();
+        String gender = empHolder.getEmployee().getGender();
+
+        String format = "yyyy-MM-dd'T'";
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+        String beginTime = currentDateTime.format(formatter) + "00:00:00";
+        LocalDateTime futureDateTime = currentDateTime.plusYears(10);
+        String endTime = futureDateTime.format(formatter) + "23:59:59";
+
+        String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
+        DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json",requestBody,"application/json", "PUT");
+        if(setUserInfoRes.getContentType().startsWith("Request failed")){
+            ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + setUserInfoRes.getBody(), Alert.AlertType.ERROR);
+            return;
+        }
+
+        JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
+        if(!setUserInfoResObj.getString("statusString").equals("OK")){
+            ImplFunctions.functions.showAlert("Error", "",setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode"), Alert.AlertType.ERROR);
+            return;
+        }
+
+        String checkFaceReqBody = "{\n" +
+                "    \"searchResultPosition\": 0,\n" +
+                "    \"maxResults\": 30,\n" +
+                "    \"faceLibType\": \"blackFD\",\n" +
+                "    \"FDID\": \"1\",\n" +
+                "    \"FPID\": \"" + employeeNo + "\"\n" +
                 "}";
-//        DigestResponseData response = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json",requestBody,"application/json");
+        DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json",checkFaceReqBody,"application/json", "POST");
+        if(checkFaceExist.getContentType().startsWith("Request failed")){
+            ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + checkFaceExist.getBody(), Alert.AlertType.ERROR);
+            return;
+        }
+
+        JSONObject checkFaceResObj = new JSONObject(checkFaceExist.getBody().toString());
+        if(checkFaceResObj.getString("statusString").equals("OK")){
+            if(checkFaceResObj.getString("responseStatusStrg").equals("OK")){
+                ImplFunctions.functions.showAlert("Warning", "","Face data is already existed.", Alert.AlertType.WARNING);
+                try {
+                    Files.delete(Path.of(fileName + ".jpg"));
+                    imageView.setImage(null);
+                    root.getChildren().remove(imageView);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
+            }
+        }else{
+            ImplFunctions.functions.showAlert("Error", "",checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"), Alert.AlertType.ERROR);
+            return;
+        }
+
+        String faceDataRecord = "{\"faceLibType\":\"blackFD\",\"FDID\":\"1\",\"FPID\":\"" + employeeNo +"\"}";
+        MultipartBody.Builder formDataBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+        formDataBuilder.addFormDataPart("FaceDataRecord", faceDataRecord);
+        try {
+            formDataBuilder.addFormDataPart("asd",fileName, RequestBody.create(Files.readAllBytes(Path.of(fileName + ".jpg")), MediaType.parse("image/jpeg")));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",formDataBuilder,"application/json", "POST");
+        if(saveUserFaceRes.getContentType().startsWith("Request failed")){
+            ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + saveUserFaceRes.getBody(), Alert.AlertType.ERROR);
+            return;
+        }
+
+        JSONObject saveUserFaceResObj = new JSONObject(saveUserFaceRes.getBody().toString());
+        if(!saveUserFaceResObj.getString("statusString").equals("OK")){
+            ImplFunctions.functions.showAlert("Error", "",saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode"), Alert.AlertType.ERROR);
+            return;
+        }else{
+            ImplFunctions.functions.showAlert("Success", "","Successfully added new employee.", Alert.AlertType.INFORMATION);
+            try {
+                Files.delete(Path.of(fileName + ".jpg"));
+                imageView.setImage(null);
+                root.getChildren().remove(imageView);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
