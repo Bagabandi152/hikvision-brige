@@ -350,7 +350,7 @@ public class MainApp {
     }
 
     public static JSONObject sentERP(String fileName){
-        String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?device=" + + deviceHolder.getDevice().getId() + "&personid=" + empHolder.getEmployee().getEmpId(),"GET","application/json","",true);
+        String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?device=" + deviceHolder.getDevice().getId() + "&personid=" + empHolder.getEmployee().getEmpId(),"GET","application/json","",true);
         if(checkEmpDicRes.startsWith("Request failed")){
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkEmpDicRes +  "\"}");
         }
