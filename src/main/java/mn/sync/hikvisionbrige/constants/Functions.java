@@ -19,6 +19,5 @@ public interface Functions {
     DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod);
     String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
     void showAlert(String title, String headerText, String msg, Alert.AlertType alertType);
-    String convertToBase64(String imageData);
-    String getOSCode();
+    String convertImageToBase64(String imagePath);
 }

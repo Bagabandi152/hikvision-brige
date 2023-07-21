@@ -283,8 +283,7 @@ public class MainApp {
         stage.show();
     }
 
-    public static void sendUserData(String fileName, ImageView imageView, VBox root){
-
+    public static JSONObject sentFaceRecogTerm(String fileName){
         Integer employeeNo = empHolder.getEmployee().getEmpId();
         String empName = empHolder.getEmployee().getEndUserNameEng();
         String gender = empHolder.getEmployee().getGender();
@@ -299,14 +298,12 @@ public class MainApp {
         String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
         DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json",requestBody,"application/json", "PUT");
         if(setUserInfoRes.getContentType().startsWith("Request failed")){
-            ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + setUserInfoRes.getBody(), Alert.AlertType.ERROR);
-            return;
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() +  "\"}");
         }
 
         JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
         if(!setUserInfoResObj.getString("statusString").equals("OK")){
-            ImplFunctions.functions.showAlert("Error", "",setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode"), Alert.AlertType.ERROR);
-            return;
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") +  "\"}");
         }
 
         String checkFaceReqBody = "{\n" +
@@ -318,26 +315,16 @@ public class MainApp {
                 "}";
         DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json",checkFaceReqBody,"application/json", "POST");
         if(checkFaceExist.getContentType().startsWith("Request failed")){
-            ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + checkFaceExist.getBody(), Alert.AlertType.ERROR);
-            return;
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() +  "\"}");
         }
 
         JSONObject checkFaceResObj = new JSONObject(checkFaceExist.getBody().toString());
         if(checkFaceResObj.getString("statusString").equals("OK")){
             if(checkFaceResObj.getString("responseStatusStrg").equals("OK")){
-                ImplFunctions.functions.showAlert("Warning", "","Face data is already existed.", Alert.AlertType.WARNING);
-                try {
-                    Files.delete(Path.of(fileName + ".jpg"));
-                    imageView.setImage(null);
-                    root.getChildren().remove(imageView);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return;
+                return new JSONObject("{\"code\": \"warning\", \"msg\": \"Face data is already existed.\"}");
             }
         }else{
-            ImplFunctions.functions.showAlert("Error", "",checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"), Alert.AlertType.ERROR);
-            return;
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode") +  "\"}");
         }
 
         String faceDataRecord = "{\"faceLibType\":\"blackFD\",\"FDID\":\"1\",\"FPID\":\"" + employeeNo +"\"}";
@@ -351,23 +338,63 @@ public class MainApp {
 
         DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",formDataBuilder,"application/json", "POST");
         if(saveUserFaceRes.getContentType().startsWith("Request failed")){
-            ImplFunctions.functions.showAlert("Error", "","Request failed with status code: " + saveUserFaceRes.getBody(), Alert.AlertType.ERROR);
-            return;
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() +  "\"}");
         }
 
         JSONObject saveUserFaceResObj = new JSONObject(saveUserFaceRes.getBody().toString());
         if(!saveUserFaceResObj.getString("statusString").equals("OK")){
-            ImplFunctions.functions.showAlert("Error", "",saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode"), Alert.AlertType.ERROR);
-            return;
-        }else{
-            ImplFunctions.functions.showAlert("Success", "","Successfully added new employee.", Alert.AlertType.INFORMATION);
-            try {
-                Files.delete(Path.of(fileName + ".jpg"));
-                imageView.setImage(null);
-                root.getChildren().remove(imageView);
-            } catch (IOException e) {
-                e.printStackTrace();
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode") +  "\"}");
+        }
+
+        return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
+    }
+
+    public static JSONObject sentERP(String fileName){
+        String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?device=" + + deviceHolder.getDevice().getId() + "&personid=" + empHolder.getEmployee().getEmpId(),"GET","application/json","",true);
+        if(checkEmpDicRes.startsWith("Request failed")){
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkEmpDicRes +  "\"}");
+        }
+        JSONArray jsonArray = new JSONArray(checkEmpDicRes);
+        if(jsonArray.length() > 0){
+            return new JSONObject("{\"code\": \"warning\", \"msg\": \"Employee is already existed.\"}");
+        }
+
+        String photoBase64 = ImplFunctions.functions.convertImageToBase64(fileName + ".jpg");
+        String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceHolder.getDevice().getId() + "\", \"personid\": \"" + empHolder.getEmployee().getEmpId() + "\", \"empid\": \"" + empHolder.getEmployee().getEmpId() + "\", \"photo\": \"" + photoBase64 + "\"}";
+        String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic","POST","application/json",storeDevEmpReqBody,true);
+        if(storeDevEmpRes.startsWith("Request failed")){
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes +  "\"}");
+        }
+
+        return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
+    }
+
+    public static void sendUserData(String fileName, ImageView imageView, VBox root){
+
+        JSONObject frtSentStatus = sentFaceRecogTerm(fileName);
+        if(frtSentStatus.getString("code").startsWith("success")){
+            JSONObject erpSentStatus = sentERP(fileName);
+            if(erpSentStatus.getString("code").startsWith("success")){
+                ImplFunctions.functions.showAlert("Success", "","Successfully added new employee.", Alert.AlertType.INFORMATION);
+            }else if(erpSentStatus.getString("code").startsWith("warning")){
+                ImplFunctions.functions.showAlert("Warning", "",erpSentStatus.getString("msg"), Alert.AlertType.INFORMATION);
+            }else{
+                ImplFunctions.functions.showAlert("Error", "",erpSentStatus.getString("msg"), Alert.AlertType.ERROR);
             }
+        }else{
+            if(frtSentStatus.getString("code").startsWith("warning")){
+                ImplFunctions.functions.showAlert("Warning", "",frtSentStatus.getString("msg"), Alert.AlertType.INFORMATION);
+            }else{
+                ImplFunctions.functions.showAlert("Error", "",frtSentStatus.getString("msg"), Alert.AlertType.ERROR);
+            }
+        }
+
+        imageView.setImage(null);
+        root.getChildren().remove(imageView);
+        try {
+            Files.delete(Path.of(fileName + ".jpg"));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

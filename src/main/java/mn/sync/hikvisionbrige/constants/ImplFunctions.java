@@ -8,15 +8,11 @@ import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
 import org.json.XML;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /**
@@ -121,10 +117,6 @@ public class ImplFunctions {
 
                 // Set the request method to POST
                 connection.setRequestMethod(method);
-                if("POST".equals(method.toUpperCase()) || "PUT".equals(method.toUpperCase())){
-                    connection.setDoOutput(true);
-                    connection.setRequestProperty("Content-Length", String.valueOf(requestBody.length()));
-                }
 
                 // Set request headers
                 connection.setRequestProperty("Content-Type", type);
@@ -134,8 +126,10 @@ public class ImplFunctions {
                 }
 
                 // Create the request body
-                if(!requestBody.isEmpty()){
+                if(!method.equals("GET") && !requestBody.isEmpty()){
                     // Enable output and send the request body
+                    connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Length", String.valueOf(requestBody.length()));
                     OutputStream outputStream = connection.getOutputStream();
                     System.out.println("ERP requestBody: " + requestBody);
                     outputStream.write(requestBody.getBytes());
@@ -178,19 +172,34 @@ public class ImplFunctions {
             alert.setTitle(title);
             alert.setHeaderText(headerText);
             alert.setContentText(msg);
-            alert.showAndWait();
+            alert.show();
         }
 
         @Override
-        public String convertToBase64(String imageData) {
-            byte[] imageBytes = imageData.getBytes(StandardCharsets.ISO_8859_1);
-            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-            return base64Image;
-        }
+        public String convertImageToBase64(String imagePath) {
+            FileInputStream fis = null;
+            File file = new File(imagePath);
+            try {
+                fis = new FileInputStream(file);
+                byte[] fileData = new byte[(int) file.length()];
+                fis.read(fileData);
+                byte[] fileContent = fileData;
+                return Base64.getEncoder().encodeToString(fileContent);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (fis != null) {
+                    try {
+                        fis.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
 
-        @Override
-        public String getOSCode() {
-            return System.getProperty("os.name").toLowerCase();
+            return null;
         }
     };
 }
