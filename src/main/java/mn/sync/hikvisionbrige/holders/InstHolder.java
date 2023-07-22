@@ -14,7 +14,8 @@ public final class InstHolder {
     private InstShortInfo instShortInfo;
     private final static InstHolder INSTANCE = new InstHolder();
 
-    private InstHolder() {}
+    private InstHolder() {
+    }
 
     public static InstHolder getInstance() {
         return INSTANCE;

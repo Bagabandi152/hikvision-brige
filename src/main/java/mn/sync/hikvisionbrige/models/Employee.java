@@ -46,27 +46,27 @@ public class Employee {
 
     @Override
     public String toString() {
-        return  endUserNameEng;
+        return endUserNameEng;
     }
 
     public static ObservableList<Employee> getEmpList() {
         ObservableList<Employee> list = FXCollections.observableArrayList();
-        String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getactiveemps","POST","application/json","{}",true);
-        if(response.startsWith("Request failed")){
-            ImplFunctions.functions.showAlert("Error", "",response, Alert.AlertType.ERROR);
+        String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getactiveemps", "POST", "application/json", "{}", true);
+        if (response.startsWith("Request failed")) {
+            ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return list;
         }
         // Print the response
         JSONArray jsonArray = null;
         try {
-            if(response == null){
+            if (response == null) {
                 ImplFunctions.functions.showAlert("Error", "", "When fetch employee list from server, occurred error.", Alert.AlertType.ERROR);
                 return list;
             }
             jsonArray = new JSONArray(response);
-            for(int i = 0; i < jsonArray.length(); i++){
+            for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
-                Employee newEmployee = new Employee(jsonObject.getInt("empid"), jsonObject.getInt("instid"), jsonObject.getString("empfname"), jsonObject.getString("emplname"), jsonObject.getString("emplnameabr"), jsonObject.getString("empfnameeng"), jsonObject.getString("emplnameeng"), jsonObject.getString("emplnameabreng"), jsonObject.getString("endusername"), jsonObject.getString("enduserengname"), !jsonObject.isNull("prflno") ? jsonObject.getString("prflno") : "", jsonObject.getInt("gender") == 1 ? "male": jsonObject.getInt("gender") == 2 ? "female" : "unknown");
+                Employee newEmployee = new Employee(jsonObject.getInt("empid"), jsonObject.getInt("instid"), jsonObject.getString("empfname"), jsonObject.getString("emplname"), jsonObject.getString("emplnameabr"), jsonObject.getString("empfnameeng"), jsonObject.getString("emplnameeng"), jsonObject.getString("emplnameabreng"), jsonObject.getString("endusername"), jsonObject.getString("enduserengname"), !jsonObject.isNull("prflno") ? jsonObject.getString("prflno") : "", jsonObject.getInt("gender") == 1 ? "male" : jsonObject.getInt("gender") == 2 ? "female" : "unknown");
                 list.add(newEmployee);
             }
         } catch (JSONException e) {

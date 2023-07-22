@@ -14,7 +14,8 @@ public final class UserHolder {
     private ActiveUser activeUser;
     private final static UserHolder INSTANCE = new UserHolder();
 
-    private UserHolder() {}
+    private UserHolder() {
+    }
 
     public static UserHolder getInstance() {
         return INSTANCE;

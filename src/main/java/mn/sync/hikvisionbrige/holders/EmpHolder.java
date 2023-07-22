@@ -14,7 +14,8 @@ public final class EmpHolder {
     private Employee employee;
     private final static EmpHolder INSTANCE = new EmpHolder();
 
-    private EmpHolder() {}
+    private EmpHolder() {
+    }
 
     public static EmpHolder getInstance() {
         return INSTANCE;

@@ -14,7 +14,8 @@ public final class DeviceHolder {
     private Device device;
     private final static DeviceHolder INSTANCE = new DeviceHolder();
 
-    private DeviceHolder() {}
+    private DeviceHolder() {
+    }
 
     public static DeviceHolder getInstance() {
         return INSTANCE;

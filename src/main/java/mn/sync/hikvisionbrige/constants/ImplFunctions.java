@@ -35,9 +35,7 @@ public class ImplFunctions {
             });
 
             // Create OkHttpClient
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD)))
-                    .build();
+            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD))).build();
 
             // Define the request body (for POST requests)
             MediaType mediaType = MediaType.parse(type);
@@ -45,20 +43,19 @@ public class ImplFunctions {
             boolean isSentBody = requestMethod.toUpperCase().equals("POST") || requestMethod.toUpperCase().equals("PUT");
             if (isSentBody) {
                 System.out.println("Digest request body: " + requestBody);
-                if(requestBody instanceof MultipartBody.Builder){
+                if (requestBody instanceof MultipartBody.Builder) {
                     body = ((MultipartBody.Builder) requestBody).build();
-                }else{
+                } else {
                     body = RequestBody.create(String.valueOf(requestBody), mediaType);
                 }
             }
 
             // Create the request
-            Request.Builder requestBuilder = new Request.Builder()
-                    .url(API);
+            Request.Builder requestBuilder = new Request.Builder().url(API);
 
-            if (requestMethod.toUpperCase().equals("POST") ) {
+            if (requestMethod.toUpperCase().equals("POST")) {
                 requestBuilder.post(body);
-            } else if (requestMethod.toUpperCase().equals("PUT") ) {
+            } else if (requestMethod.toUpperCase().equals("PUT")) {
                 requestBuilder.put(body);
             } else if (requestMethod.toUpperCase().equals("GET")) {
                 requestBuilder.get();
@@ -120,13 +117,13 @@ public class ImplFunctions {
 
                 // Set request headers
                 connection.setRequestProperty("Content-Type", type);
-                if(auth){
+                if (auth) {
                     String cookieValue = CookieHolder.getInstance().getCookie("login");
                     connection.setRequestProperty("Authorization", "Bearer " + cookieValue);
                 }
 
                 // Create the request body
-                if(!method.equals("GET") && !requestBody.isEmpty()){
+                if (!method.equals("GET") && !requestBody.isEmpty()) {
                     // Enable output and send the request body
                     connection.setDoOutput(true);
                     connection.setRequestProperty("Content-Length", String.valueOf(requestBody.length()));
@@ -140,7 +137,7 @@ public class ImplFunctions {
                 // Get the response code
                 int responseCode = connection.getResponseCode();
                 System.out.println("ERP response code: " + responseCode);
-                if(responseCode == 200){
+                if (responseCode == 200) {
                     // Read the response
                     BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                     String line;
@@ -156,7 +153,7 @@ public class ImplFunctions {
 
                     // Close the connection
                     connection.disconnect();
-                }else{
+                } else {
                     strResponse = "Request failed with status code: " + responseCode;
                 }
             } catch (Exception e) {

@@ -54,8 +54,8 @@ public class Login extends Application {
         // Add Username label and TextField
         Label usernameLabel = new Label("Email:");
         usernameTextField = new TextField();
-        usernameTextField.textProperty().addListener( (observable, oldValue, newValue) -> {
-            if(!newValue.isEmpty()){
+        usernameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.isEmpty()) {
                 usernameTextField.setStyle("-fx-border-color: none;");
             }
         });
@@ -65,8 +65,8 @@ public class Login extends Application {
         // Add Password label and PasswordField
         Label passwordLabel = new Label("Password:");
         passwordField = new PasswordField();
-        passwordField.textProperty().addListener( (observable, oldValue, newValue) -> {
-            if(!newValue.isEmpty()){
+        passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.isEmpty()) {
                 passwordField.setStyle("-fx-border-color: none;");
             }
         });
@@ -83,26 +83,26 @@ public class Login extends Application {
             String userName = usernameTextField.getText();
             String password = passwordField.getText();
 
-            if(userName.isEmpty()){
+            if (userName.isEmpty()) {
                 usernameTextField.setStyle("-fx-border-color: #f00; -fx-border-radius: 3px;");
                 return;
             }
 
-            if(password.isEmpty()){
+            if (password.isEmpty()) {
                 passwordField.setStyle("-fx-border-color: #f00; -fx-border-radius: 3px;");
                 return;
             }
 
             // Perform login validation here
-            JSONObject step1Object = validateLogin(userName, password, null, 1, null,"");
+            JSONObject step1Object = validateLogin(userName, password, null, 1, null, "");
             try {
                 assert step1Object != null;
                 if ("enterPassword".equals(step1Object.getString("responsecode"))) {
-                    JSONObject step2Object = validateLogin(userName, password, null, 2, step1Object.getString("steptoken"),"");
+                    JSONObject step2Object = validateLogin(userName, password, null, 2, step1Object.getString("steptoken"), "");
                     assert step2Object != null;
-                    if (step2Object.getString("responsecode").equals("chooseInst")){
-                        chooseInst(primaryStage,gridPane,step2Object,userName,password);
-                    }else if(step2Object.getString("responsecode").equals("requiredMFA")) {
+                    if (step2Object.getString("responsecode").equals("chooseInst")) {
+                        chooseInst(primaryStage, gridPane, step2Object, userName, password);
+                    } else if (step2Object.getString("responsecode").equals("requiredMFA")) {
                         gridPane.getChildren().clear();
                         gridPane.setPadding(new Insets(30));
                         Label comboLabel = new Label("Enter google authentication code:");
@@ -110,25 +110,25 @@ public class Login extends Application {
 
                         TextField textField = new TextField();
                         textField.textProperty().addListener((observable, oldValue, newValue) -> {
-                            if(newValue.length() == 6){
+                            if (newValue.length() == 6) {
                                 JSONObject step4Object = null;
                                 try {
-                                    step4Object = validateLogin(userName, password, null, 4, step2Object.getString("steptoken"),newValue);
+                                    step4Object = validateLogin(userName, password, null, 4, step2Object.getString("steptoken"), newValue);
                                     assert step4Object != null;
-                                    if (step4Object.getString("responsecode").equals("chooseInst")){
-                                        chooseInst(primaryStage,gridPane,step4Object,userName,password);
+                                    if (step4Object.getString("responsecode").equals("chooseInst")) {
+                                        chooseInst(primaryStage, gridPane, step4Object, userName, password);
                                     }
                                 } catch (JSONException ex) {
                                     ex.printStackTrace();
                                 }
                             }
                         });
-                        gridPane.add(comboLabel, 0,0);
-                        gridPane.add(textField, 0,1);
-                    }else{
+                        gridPane.add(comboLabel, 0, 0);
+                        gridPane.add(textField, 0, 1);
+                    } else {
                         loginError(step2Object.getString("responsecode"));
                     }
-                }else{
+                } else {
                     loginError(step1Object.getString("responsecode"));
                 }
             } catch (JSONException ex) {
@@ -146,7 +146,7 @@ public class Login extends Application {
         primaryStage.show();
     }
 
-    public void chooseInst(Stage stage, GridPane gridPane, JSONObject stepObject, String userName, String password){
+    public void chooseInst(Stage stage, GridPane gridPane, JSONObject stepObject, String userName, String password) {
         JSONArray instList = null;
         try {
             JSONObject jsonObject = stepObject.getJSONObject("data");
@@ -159,7 +159,7 @@ public class Login extends Application {
 
             ComboBox<InstShortInfo> comboBox = new ComboBox<>();
             ObservableList<InstShortInfo> observableList = FXCollections.observableArrayList();
-            for(int i = 0; i < instList.length(); i++){
+            for (int i = 0; i < instList.length(); i++) {
                 JSONObject inst = instList.getJSONObject(i);
                 observableList.add(new InstShortInfo(inst.getInt("instid"), inst.getString("regno"), inst.getString("instnameshort"), inst.getString("instnameshorteng"), inst.getString("instname"), inst.getString("instnameeng")));
             }
@@ -169,14 +169,14 @@ public class Login extends Application {
                 InstHolder.getInstance().setInst(newValue);
                 JSONObject step3Object;
                 try {
-                    step3Object = validateLogin(userName, password, newValue.getInstId(), 3, stepObject.getString("steptoken"),"");
+                    step3Object = validateLogin(userName, password, newValue.getInstId(), 3, stepObject.getString("steptoken"), "");
                     assert step3Object != null;
-                    if(step3Object.getString("responsecode").equals("success")){
+                    if (step3Object.getString("responsecode").equals("success")) {
                         JSONObject successData = step3Object.getJSONObject("data");
-                        UserHolder.getInstance().setActiveUser(new ActiveUser(successData.getInt("id"), successData.getInt("empid"), successData.getString("name"),successData.getString("email")));
+                        UserHolder.getInstance().setActiveUser(new ActiveUser(successData.getInt("id"), successData.getInt("empid"), successData.getString("name"), successData.getString("email")));
                         CookieHolder.getInstance().setCookie("login", successData.getString("access_token"));
                         loginSuccess(userName, stage);
-                    }else{
+                    } else {
                         loginError(step3Object.getString("responsecode"));
                     }
                 } catch (JSONException ex) {
@@ -184,29 +184,29 @@ public class Login extends Application {
                     ex.printStackTrace();
                 }
             });
-            gridPane.add(comboLabel, 0,0);
-            gridPane.add(comboBox, 0,1);
+            gridPane.add(comboLabel, 0, 0);
+            gridPane.add(comboBox, 0, 1);
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    private void loginSuccess(String username, Stage stage){
+    private void loginSuccess(String username, Stage stage) {
         // Show a success message
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Login Successful");
         alert.setHeaderText(null);
         alert.setContentText("Hello, " + username + ".\nWelcome to face recognition terminal.");
         Optional<ButtonType> result = alert.showAndWait();
-        if(result.isEmpty()){
+        if (result.isEmpty()) {
             System.out.println("Alert is exited, no button has been pressed.\n");
-        }else{
+        } else {
             stage.close();
             MainApp.start(stage);
         }
     }
 
-    private void loginError(String responseCode){
+    private void loginError(String responseCode) {
         // Show an error message
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Login Error");
@@ -216,17 +216,18 @@ public class Login extends Application {
     }
 
     private JSONObject validateLogin(String email, String password, Integer instId, Integer step, String stepToken, String authCode) {
-        String requestBody = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\", \"instid\":" + instId + ", \"step\":" + step + ",\"steptoken\":\"" + stepToken + "\"}";;
-        if(!authCode.isEmpty()){
+        String requestBody = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\", \"instid\":" + instId + ", \"step\":" + step + ",\"steptoken\":\"" + stepToken + "\"}";
+        ;
+        if (!authCode.isEmpty()) {
             requestBody = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\", \"instid\":" + instId + ", \"step\":" + step + ",\"steptoken\":\"" + stepToken + "\", \"authcode\":\"" + authCode + "\"}";
         }
-        String response = ImplFunctions.functions.ErpApiService("/auth/login","POST","application/json",requestBody,false);
-        if(response.startsWith("Request failed")){
-            ImplFunctions.functions.showAlert("Error", "",response, Alert.AlertType.ERROR);
+        String response = ImplFunctions.functions.ErpApiService("/auth/login", "POST", "application/json", requestBody, false);
+        if (response.startsWith("Request failed")) {
+            ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return null;
         }
         try {
-            if(response.isEmpty()){
+            if (response.isEmpty()) {
                 return null;
             }
             return new JSONObject(response.toString());

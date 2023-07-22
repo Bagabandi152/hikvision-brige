@@ -28,8 +28,8 @@ public class Device {
         this.serial = serial;
     }
 
-    public Device(){
-        this(-1,"","","");
+    public Device() {
+        this(-1, "", "", "");
     }
 
     /**
@@ -43,7 +43,6 @@ public class Device {
 
     /**
      * set field
-     *
      */
     public void setId(Integer id) {
         this.id = id;
@@ -60,7 +59,6 @@ public class Device {
 
     /**
      * set field
-     *
      */
     public void setIpAddress(String ipAddress) {
         this.ipAddress = ipAddress;
@@ -77,7 +75,6 @@ public class Device {
 
     /**
      * set field
-     *
      */
     public void setName(String name) {
         this.name = name;
@@ -94,7 +91,6 @@ public class Device {
 
     /**
      * set field
-     *
      */
     public void setSerial(String serial) {
         this.serial = serial;
@@ -107,22 +103,22 @@ public class Device {
 
     public static ObservableList<Device> getDeviceList() {
         ObservableList<Device> list = FXCollections.observableArrayList();
-        String response = ImplFunctions.functions.ErpApiService("/timerpt/device","GET","application/json","",true);
-        if(response.startsWith("Request failed")){
-            ImplFunctions.functions.showAlert("Error", "",response, Alert.AlertType.ERROR);
+        String response = ImplFunctions.functions.ErpApiService("/timerpt/device", "GET", "application/json", "", true);
+        if (response.startsWith("Request failed")) {
+            ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return list;
         }
         // Print the response
         JSONArray jsonArray = null;
         try {
-            if(response == null){
+            if (response == null) {
                 ImplFunctions.functions.showAlert("Error", "", "When fetch device list from server, occurred error.", Alert.AlertType.ERROR);
                 return list;
             }
             jsonArray = new JSONArray(response);
-            for(int i = 0; i < jsonArray.length(); i++){
+            for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
-                if( !jsonObject.isNull("ipaddress") && !jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty()){
+                if (!jsonObject.isNull("ipaddress") && !jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty()) {
                     list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial")));
                 }
             }
