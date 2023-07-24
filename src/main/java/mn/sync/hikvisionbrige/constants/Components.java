@@ -1,9 +1,13 @@
 package mn.sync.hikvisionbrige.constants;
 
+import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.*;
 import javafx.scene.text.Font;
@@ -12,7 +16,11 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.holders.LoadingHolder;
 import mn.sync.hikvisionbrige.models.Loader;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -81,5 +89,35 @@ public abstract class Components {
 
             executor.schedule(delayedTask, delayInSeconds, TimeUnit.SECONDS);
         }
+    }
+
+    public static TableView getTable(ObservableList list, JSONArray columns) {
+        TableView<Object> table = new TableView<Object>();
+        table.setPrefWidth(295);
+        table.setPrefHeight(150);
+
+        ArrayList<TableColumn> columnArrayList = new ArrayList<>();
+        for (int i = 0; i < columns.length(); i++) {
+            JSONObject colObj = columns.getJSONObject(i);
+            String colName = colObj.getString("name");
+            String colKey = colObj.getString("key");
+            TableColumn<Object, String> tableColumn = new TableColumn<>(colName);
+            tableColumn.setCellValueFactory(new PropertyValueFactory<>(colKey));
+            if (colObj.has("sortType")) {
+                String sortType = colObj.getString("sortType");
+                if (sortType.equalsIgnoreCase("DESC")) {
+                    tableColumn.setSortType(TableColumn.SortType.DESCENDING);
+                } else {
+                    tableColumn.setSortType(TableColumn.SortType.ASCENDING);
+                }
+            }
+            if (colObj.has("sortAble")) {
+                tableColumn.setSortable(colObj.getBoolean("sortType"));
+            }
+            columnArrayList.add(tableColumn);
+        }
+        table.setItems(list);
+        table.getColumns().addAll((Collection<? extends TableColumn<Object, ?>>) columnArrayList);
+        return table;
     }
 }

@@ -1,6 +1,5 @@
 package mn.sync.hikvisionbrige.holders;
 
-import mn.sync.hikvisionbrige.models.ActiveUser;
 import mn.sync.hikvisionbrige.models.Loader;
 
 /**

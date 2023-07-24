@@ -56,7 +56,7 @@ public class Employee {
             ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return list;
         }
-        // Print the response
+
         JSONArray jsonArray = null;
         try {
             if (response == null) {

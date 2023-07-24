@@ -1,5 +1,7 @@
 package mn.sync.hikvisionbrige;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
@@ -35,8 +37,10 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
-
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MainApp extends Components {
 
@@ -47,6 +51,27 @@ public class MainApp extends Components {
     private static EmpHolder empHolder = EmpHolder.getInstance();
 
     public static void start(Stage stage) {
+
+        //Create root
+        VBox root = new VBox();
+        root.setSpacing(10);
+        root.setPadding(new Insets(15, 25, 10, 25));
+
+        //Create tableView
+        ObservableList<TimeDataLog> logList = FXCollections.observableArrayList(TimeDataLog.getTimeDataLog());
+        JSONArray tabCols = new JSONArray();
+        String[][] tabColsData = {{"Device Name", "Institution", "Username", "Upload date", "Register date"}, {"deviceName", "instNameEng", "endUserNameEng", "uploadDate", "registerDate"}};
+        for (int i = 0; i < tabColsData.length; i++) {
+            for (int j = 0; j < tabColsData[0].length; j++) {
+                JSONObject jsonObject = new JSONObject();
+                if (i == 0) {
+                    jsonObject.put("name", tabColsData[i][j]);
+                } else {
+                    jsonObject.put("name", tabColsData[i][j]);
+                    tabCols.put(jsonObject);
+                }
+            }
+        }
 
         //Create ComboBox
         ComboBox<Device> comboBox = new ComboBox<>();
@@ -71,11 +96,6 @@ public class MainApp extends Components {
             empComboBox.setStyle("-fx-border-color: none;");
             empHolder.setEmployee(newValue);
         });
-
-        //Create root
-        VBox root = new VBox();
-        root.setSpacing(10);
-        root.setPadding(new Insets(15, 25, 10, 25));
 
         //Create FlowPane, then add ComboBox
         FlowPane flowPane = new FlowPane();
@@ -224,19 +244,19 @@ public class MainApp extends Components {
             JSONArray otherDevEmpList = new JSONArray(otherDevEmpListRes);
             showLoading(stage, true);
             Boolean isAllSent = true;
-            for(int i = 0; i < otherDevEmpList.length(); i++){
+            for (int i = 0; i < otherDevEmpList.length(); i++) {
                 JSONObject jsonObject = otherDevEmpList.getJSONObject(i);
-                boolean sentStatus = syncUserData(stage,jsonObject);
-                if(!sentStatus){
+                boolean sentStatus = syncUserData(stage, jsonObject);
+                if (!sentStatus) {
                     isAllSent = false;
                     break;
                 }
             }
             showLoading(stage, false);
 
-            if(!isAllSent){
+            if (!isAllSent) {
                 ImplFunctions.functions.showAlert("Error", "", "When sync employees data to this device from other device, occurred error.", Alert.AlertType.ERROR);
-            }else{
+            } else {
                 ImplFunctions.functions.showAlert("Success", "", "Successfully sync employees data.", Alert.AlertType.INFORMATION);
             }
         };
@@ -332,11 +352,12 @@ public class MainApp extends Components {
         root.getChildren().add(empFlowPane);
         root.getChildren().add(sepDown);
         root.getChildren().add(hBoxBtnDown);
+        root.getChildren().add(Components.getTable(logList, tabCols));
 
         //Set config in stage
         stage.setResizable(false);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
-        Scene scene = new Scene(root, 345, 360);
+        Scene scene = new Scene(root, 345, 520);
         stage.setScene(scene);
         stage.show();
     }
@@ -437,7 +458,7 @@ public class MainApp extends Components {
             deviceId = ((JSONObject) data).getInt("deviceid");
             personId = ((JSONObject) data).getInt("personid");
             empPhoto = ((JSONObject) data).getJSONObject("empphoto");
-        }else{
+        } else {
             deviceId = deviceHolder.getDevice().getId();
             personId = empHolder.getEmployee().getEmpId();
         }
