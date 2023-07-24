@@ -15,6 +15,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import mn.sync.hikvisionbrige.constants.Components;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.DeviceHolder;
 import mn.sync.hikvisionbrige.holders.EmpHolder;
@@ -36,7 +37,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 
-public class MainApp {
+public class MainApp extends Components {
 
     private static String BASE_URL = "";
     private static DeviceHolder deviceHolder = DeviceHolder.getInstance();
@@ -82,7 +83,6 @@ public class MainApp {
         comboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
         flowPane.getChildren().add(comboLabel);
         flowPane.getChildren().add(comboBox);
-        root.getChildren().add(flowPane);
 
         FlowPane empFlowPane = new FlowPane();
         empFlowPane.setHgap(5);
@@ -90,16 +90,18 @@ public class MainApp {
         empComboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
         empFlowPane.getChildren().add(empComboLabel);
         empFlowPane.getChildren().add(empComboBox);
-        root.getChildren().add(empFlowPane);
 
-        //Create Separator
-        Separator sep = new Separator();
-        sep.setHalignment(HPos.CENTER);
-        root.getChildren().add(sep);
+        //Create Separators
+        Separator sepTop = new Separator();
+        sepTop.setHalignment(HPos.CENTER);
+        Separator sepDown = new Separator();
+        sepDown.setHalignment(HPos.CENTER);
 
         //Create HBox, then add Buttons
-        HBox hBox = new HBox();
-        hBox.setSpacing(10);
+        HBox hBoxBtnTop = new HBox();
+        hBoxBtnTop.setSpacing(10);
+        HBox hBoxBtnDown = new HBox();
+        hBoxBtnTop.setSpacing(10);
 
         //Create ImageView
         ImageView imageView = new ImageView();
@@ -127,7 +129,9 @@ public class MainApp {
             endDate = now.atOffset(zoneOffset).format(formatter);
 
             Device activeDevice = deviceHolder.getDevice();
+            showLoading(stage,true);
             String lastUploadRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getlastupload", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
+            showLoading(stage,false);
             if (lastUploadRes.startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
@@ -153,7 +157,9 @@ public class MainApp {
             System.out.println("endDate: " + endDate);
 
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
+            showLoading(stage,true);
             DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
+            showLoading(stage,false);
             if (responseBody.getContentType().startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
                 return;
@@ -177,7 +183,10 @@ public class MainApp {
             } catch (JSONException ex) {
                 ex.printStackTrace();
             }
+
+            showLoading(stage,true);
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
+            showLoading(stage,false);
             if (lastUploadRes.startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
@@ -192,7 +201,18 @@ public class MainApp {
             ImplFunctions.functions.showAlert("Success Message", "", "Successfully synced time data.", Alert.AlertType.INFORMATION);
         };
         syncBtn.setOnAction(syncEvent);
-        hBox.getChildren().add(syncBtn);
+        hBoxBtnTop.getChildren().add(syncBtn);
+
+        //Create Button to sync employee data
+        Button syncEmpData = new Button("Sync employee data");
+        EventHandler syncEmpDataEvent = e -> {
+            if (BASE_URL.isEmpty()) {
+                comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                return;
+            }
+        };
+        syncEmpData.setOnAction(syncEmpDataEvent);
+        hBoxBtnTop.getChildren().add(syncEmpData);
 
         //Create Button to add new data
         Button newBtn = new Button("Add new employee");
@@ -207,8 +227,10 @@ public class MainApp {
                 return;
             }
 
+            showLoading(stage,true);
             String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
             DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST");
+            showLoading(stage,false);
             if (captureRes.getContentType().startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + captureRes.getBody(), Alert.AlertType.ERROR);
                 return;
@@ -266,12 +288,21 @@ public class MainApp {
                     ex.printStackTrace();
                 }
 
-                sendUserData(fileName, imageView, root);
+                sendUserData(stage, fileName, imageView, root);
             }
         };
         newBtn.setOnAction(addEmpEvent);
-        hBox.getChildren().add(newBtn);
-        root.getChildren().add(hBox);
+        hBoxBtnDown.getChildren().add(newBtn);
+
+        //Add children to root
+        root.getChildren().add(getSeparatorWithLabel("Device section"));
+        root.getChildren().add(flowPane);
+        root.getChildren().add(sepTop);
+        root.getChildren().add(hBoxBtnTop);
+        root.getChildren().add(getSeparatorWithLabel("Employee section"));
+        root.getChildren().add(empFlowPane);
+        root.getChildren().add(sepDown);
+        root.getChildren().add(hBoxBtnDown);
 
         //Set config in stage
         stage.setResizable(false);
@@ -281,7 +312,7 @@ public class MainApp {
         stage.show();
     }
 
-    public static JSONObject sentFaceRecogTerm(String fileName) {
+    public static JSONObject sentFaceRecogTerm(Stage stage, String fileName) {
         Integer employeeNo = empHolder.getEmployee().getEmpId();
         String empName = empHolder.getEmployee().getEndUserNameEng();
         String gender = empHolder.getEmployee().getGender();
@@ -293,8 +324,10 @@ public class MainApp {
         LocalDateTime futureDateTime = currentDateTime.plusYears(10);
         String endTime = futureDateTime.format(formatter) + "23:59:59";
 
+        showLoading(stage,true);
         String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
         DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT");
+        showLoading(stage,false);
         if (setUserInfoRes.getContentType().startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
         }
@@ -304,8 +337,10 @@ public class MainApp {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") + "\"}");
         }
 
+        showLoading(stage,true);
         String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + employeeNo + "\"\n" + "}";
         DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
+        showLoading(stage,false);
         if (checkFaceExist.getContentType().startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
         }
@@ -328,7 +363,9 @@ public class MainApp {
             e.printStackTrace();
         }
 
+        showLoading(stage,true);
         DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
+        showLoading(stage,false);
         if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
         }
@@ -341,8 +378,10 @@ public class MainApp {
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
-    public static JSONObject sentERP(String fileName) {
+    public static JSONObject sentERP(Stage stage, String fileName) {
+        showLoading(stage,true);
         String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?device=" + deviceHolder.getDevice().getId() + "&personid=" + empHolder.getEmployee().getEmpId(), "GET", "application/json", "", true);
+        showLoading(stage,false);
         if (checkEmpDicRes.startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkEmpDicRes + "\"}");
         }
@@ -352,8 +391,10 @@ public class MainApp {
         }
 
         String photoBase64 = ImplFunctions.functions.convertImageToBase64(fileName + ".jpg");
+        showLoading(stage,true);
         String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceHolder.getDevice().getId() + "\", \"personid\": \"" + empHolder.getEmployee().getEmpId() + "\", \"empid\": \"" + empHolder.getEmployee().getEmpId() + "\", \"photo\": \"" + photoBase64 + "\"}";
         String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
+        showLoading(stage,false);
         if (storeDevEmpRes.startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes + "\"}");
         }
@@ -361,11 +402,11 @@ public class MainApp {
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
-    public static void sendUserData(String fileName, ImageView imageView, VBox root) {
+    public static void sendUserData(Stage stage, String fileName, ImageView imageView, VBox root) {
 
-        JSONObject frtSentStatus = sentFaceRecogTerm(fileName);
+        JSONObject frtSentStatus = sentFaceRecogTerm(stage, fileName);
         if (frtSentStatus.getString("code").startsWith("success")) {
-            JSONObject erpSentStatus = sentERP(fileName);
+            JSONObject erpSentStatus = sentERP(stage, fileName);
             if (erpSentStatus.getString("code").startsWith("success")) {
                 ImplFunctions.functions.showAlert("Success", "", "Successfully added new employee.", Alert.AlertType.INFORMATION);
             } else if (erpSentStatus.getString("code").startsWith("warning")) {
@@ -388,5 +429,14 @@ public class MainApp {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void showLoading(Stage stage, Boolean loading) {
+        getSpinningLoader(stage, loading);
+    }
+
+    @Override
+    public void draw() {
+        System.out.println("Drawing...");
     }
 }

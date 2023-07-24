@@ -15,6 +15,7 @@ import javafx.scene.layout.GridPane;
 
 import java.util.Optional;
 
+import mn.sync.hikvisionbrige.constants.Components;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
 import mn.sync.hikvisionbrige.holders.InstHolder;
@@ -94,11 +95,15 @@ public class Login extends Application {
             }
 
             // Perform login validation here
+            MainApp.showLoading(primaryStage, true);
             JSONObject step1Object = validateLogin(userName, password, null, 1, null, "");
+            MainApp.showLoading(primaryStage, false);
             try {
                 assert step1Object != null;
                 if ("enterPassword".equals(step1Object.getString("responsecode"))) {
+                    MainApp.showLoading(primaryStage, true);
                     JSONObject step2Object = validateLogin(userName, password, null, 2, step1Object.getString("steptoken"), "");
+                    MainApp.showLoading(primaryStage, false);
                     assert step2Object != null;
                     if (step2Object.getString("responsecode").equals("chooseInst")) {
                         chooseInst(primaryStage, gridPane, step2Object, userName, password);
@@ -113,7 +118,9 @@ public class Login extends Application {
                             if (newValue.length() == 6) {
                                 JSONObject step4Object = null;
                                 try {
+                                    MainApp.showLoading(primaryStage, true);
                                     step4Object = validateLogin(userName, password, null, 4, step2Object.getString("steptoken"), newValue);
+                                    MainApp.showLoading(primaryStage, false);
                                     assert step4Object != null;
                                     if (step4Object.getString("responsecode").equals("chooseInst")) {
                                         chooseInst(primaryStage, gridPane, step4Object, userName, password);
@@ -158,6 +165,7 @@ public class Login extends Application {
             comboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
 
             ComboBox<InstShortInfo> comboBox = new ComboBox<>();
+            comboBox.setPrefWidth(280);
             ObservableList<InstShortInfo> observableList = FXCollections.observableArrayList();
             for (int i = 0; i < instList.length(); i++) {
                 JSONObject inst = instList.getJSONObject(i);
@@ -167,9 +175,10 @@ public class Login extends Application {
             comboBox.setPromptText("Select . . .");
             comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
                 InstHolder.getInstance().setInst(newValue);
-                JSONObject step3Object;
                 try {
-                    step3Object = validateLogin(userName, password, newValue.getInstId(), 3, stepObject.getString("steptoken"), "");
+                    MainApp.showLoading(stage, true);
+                    JSONObject step3Object = validateLogin(userName, password, newValue.getInstId(), 3, stepObject.getString("steptoken"), "");
+                    MainApp.showLoading(stage, false);
                     assert step3Object != null;
                     if (step3Object.getString("responsecode").equals("success")) {
                         JSONObject successData = step3Object.getJSONObject("data");
@@ -201,7 +210,6 @@ public class Login extends Application {
         if (result.isEmpty()) {
             System.out.println("Alert is exited, no button has been pressed.\n");
         } else {
-            stage.close();
             MainApp.start(stage);
         }
     }
