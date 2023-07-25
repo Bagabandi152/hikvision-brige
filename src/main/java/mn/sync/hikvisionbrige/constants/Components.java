@@ -21,6 +21,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -79,15 +80,15 @@ public abstract class Components {
             root.getChildren().add(progress);
             stage.setScene(scene);
         } else {
-            ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-
-            int delayInSeconds = 2;
-            Runnable delayedTask = () -> {
-                stage.setScene(loader.getScene());
-                loadingHolder.clear();
-            };
-
-            executor.schedule(delayedTask, delayInSeconds, TimeUnit.SECONDS);
+//            ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+//
+//            int delayInSeconds = 2;
+//            Runnable delayedTask = () -> {
+            stage.setScene(loader.getScene());
+            loadingHolder.clear();
+//            };
+//
+//            executor.schedule(delayedTask, delayInSeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -96,7 +97,7 @@ public abstract class Components {
         table.setPrefWidth(295);
         table.setPrefHeight(150);
 
-        ArrayList<TableColumn> columnArrayList = new ArrayList<>();
+        Collection<TableColumn> columnArrayList = new ArrayList<>();
         for (int i = 0; i < columns.length(); i++) {
             JSONObject colObj = columns.getJSONObject(i);
             String colName = colObj.getString("name");
@@ -117,7 +118,7 @@ public abstract class Components {
             columnArrayList.add(tableColumn);
         }
         table.setItems(list);
-        table.getColumns().addAll((Collection<? extends TableColumn<Object, ?>>) columnArrayList);
+        table.getColumns().addAll((TableColumn<Object, ?>) columnArrayList);
         return table;
     }
 }

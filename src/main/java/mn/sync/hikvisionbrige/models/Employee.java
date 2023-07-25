@@ -51,13 +51,13 @@ public class Employee {
 
     public static ObservableList<Employee> getEmpList() {
         ObservableList<Employee> list = FXCollections.observableArrayList();
-        String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getactiveemps", "POST", "application/json", "{}", true);
+        String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getactiveemps", "POST", "application/json", "{\"status\": 1}", true);
         if (response.startsWith("Request failed")) {
             ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return list;
         }
 
-        JSONArray jsonArray = null;
+        JSONArray jsonArray;
         try {
             if (response == null) {
                 ImplFunctions.functions.showAlert("Error", "", "When fetch employee list from server, occurred error.", Alert.AlertType.ERROR);

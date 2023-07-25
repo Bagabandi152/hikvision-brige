@@ -109,7 +109,7 @@ public class Device {
             return list;
         }
 
-        JSONArray jsonArray = null;
+        JSONArray jsonArray;
         try {
             if (response == null) {
                 ImplFunctions.functions.showAlert("Error", "", "When fetch device list from server, occurred error.", Alert.AlertType.ERROR);

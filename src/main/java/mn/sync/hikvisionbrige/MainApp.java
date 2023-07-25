@@ -58,20 +58,20 @@ public class MainApp extends Components {
         root.setPadding(new Insets(15, 25, 10, 25));
 
         //Create tableView
-        ObservableList<TimeDataLog> logList = FXCollections.observableArrayList(TimeDataLog.getTimeDataLog());
-        JSONArray tabCols = new JSONArray();
-        String[][] tabColsData = {{"Device Name", "Institution", "Username", "Upload date", "Register date"}, {"deviceName", "instNameEng", "endUserNameEng", "uploadDate", "registerDate"}};
-        for (int i = 0; i < tabColsData.length; i++) {
-            for (int j = 0; j < tabColsData[0].length; j++) {
-                JSONObject jsonObject = new JSONObject();
-                if (i == 0) {
-                    jsonObject.put("name", tabColsData[i][j]);
-                } else {
-                    jsonObject.put("name", tabColsData[i][j]);
-                    tabCols.put(jsonObject);
-                }
-            }
-        }
+//        ObservableList<TimeDataLog> logList = FXCollections.observableArrayList(TimeDataLog.getTimeDataLog());
+//        JSONArray tabCols = new JSONArray();
+//        String[][] tabColsData = {{"Device Name", "Institution", "Username", "Upload date", "Register date"}, {"deviceName", "instNameEng", "endUserNameEng", "uploadDate", "registerDate"}};
+//        for (int i = 0; i < tabColsData.length; i++) {
+//            for (int j = 0; j < tabColsData[0].length; j++) {
+//                JSONObject jsonObject = new JSONObject();
+//                if (i == 0) {
+//                    jsonObject.put("name", tabColsData[i][j]);
+//                } else {
+//                    jsonObject.put("key", tabColsData[i][j]);
+//                }
+//                tabCols.put(jsonObject);
+//            }
+//        }
 
         //Create ComboBox
         ComboBox<Device> comboBox = new ComboBox<>();
@@ -150,9 +150,9 @@ public class MainApp extends Components {
             endDate = now.atOffset(zoneOffset).format(formatter);
 
             Device activeDevice = deviceHolder.getDevice();
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String lastUploadRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getlastupload", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (lastUploadRes.startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
@@ -178,9 +178,9 @@ public class MainApp extends Components {
             System.out.println("endDate: " + endDate);
 
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-            showLoading(stage, true);
+//            showLoading(stage, true);
             DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (responseBody.getContentType().startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
                 return;
@@ -205,9 +205,9 @@ public class MainApp extends Components {
                 ex.printStackTrace();
             }
 
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (uploadResponse.startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", uploadResponse, Alert.AlertType.ERROR);
                 return;
@@ -233,29 +233,30 @@ public class MainApp extends Components {
             }
 
             Device activeDevice = deviceHolder.getDevice();
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String otherDevEmpListRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/getotherdevemps", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (otherDevEmpListRes.startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", otherDevEmpListRes, Alert.AlertType.ERROR);
                 return;
             }
 
             JSONArray otherDevEmpList = new JSONArray(otherDevEmpListRes);
-            showLoading(stage, true);
+//            showLoading(stage, true);
             Boolean isAllSent = true;
+            JSONObject sentStatus = null;
             for (int i = 0; i < otherDevEmpList.length(); i++) {
                 JSONObject jsonObject = otherDevEmpList.getJSONObject(i);
-                boolean sentStatus = syncUserData(stage, jsonObject);
-                if (!sentStatus) {
+                sentStatus = syncUserData(stage, jsonObject);
+                if (!sentStatus.getBoolean("valid")) {
                     isAllSent = false;
                     break;
                 }
             }
-            showLoading(stage, false);
+//            showLoading(stage, false);
 
             if (!isAllSent) {
-                ImplFunctions.functions.showAlert("Error", "", "When sync employees data to this device from other device, occurred error.", Alert.AlertType.ERROR);
+                ImplFunctions.functions.showAlert("Error", "", sentStatus.getString("info"), Alert.AlertType.ERROR);
             } else {
                 ImplFunctions.functions.showAlert("Success", "", "Successfully sync employees data.", Alert.AlertType.INFORMATION);
             }
@@ -276,10 +277,10 @@ public class MainApp extends Components {
                 return;
             }
 
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
             DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST");
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (captureRes.getContentType().startsWith("Request failed")) {
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + captureRes.getBody(), Alert.AlertType.ERROR);
                 return;
@@ -352,7 +353,7 @@ public class MainApp extends Components {
         root.getChildren().add(empFlowPane);
         root.getChildren().add(sepDown);
         root.getChildren().add(hBoxBtnDown);
-        root.getChildren().add(Components.getTable(logList, tabCols));
+//        root.getChildren().add(Components.getTable(logList, tabCols));
 
         //Set config in stage
         stage.setResizable(false);
@@ -387,10 +388,10 @@ public class MainApp extends Components {
         LocalDateTime futureDateTime = currentDateTime.plusYears(10);
         String endTime = futureDateTime.format(formatter) + "23:59:59";
 
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
         DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT");
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (setUserInfoRes.getContentType().startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
         }
@@ -400,10 +401,10 @@ public class MainApp extends Components {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") + "\"}");
         }
 
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + employeeNo + "\"\n" + "}";
         DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (checkFaceExist.getContentType().startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
         }
@@ -424,7 +425,12 @@ public class MainApp extends Components {
         byte[] photoBytes;
         if (data instanceof JSONObject) {
             fileName = "tmp/CaptureFaceData_" + employeeNo + "_" + System.currentTimeMillis() + "_" + ((int) (Math.random() * 99999) + 10000);
-            photoBytes = Base64.getDecoder().decode(empPhoto.getString("photo"));
+            String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
+            if (empPhotoBase64.equalsIgnoreCase("unknown")) {
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
+            } else {
+                photoBytes = Base64.getDecoder().decode(empPhotoBase64);
+            }
         } else {
             fileName = String.valueOf(data);
             try {
@@ -435,9 +441,9 @@ public class MainApp extends Components {
         }
         formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
 
-        showLoading(stage, true);
+//        showLoading(stage, true);
         DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
         }
@@ -451,20 +457,19 @@ public class MainApp extends Components {
     }
 
     public static JSONObject sendEmpDataERP(Stage stage, Object data) {
-        Integer deviceId;
+
         Integer personId;
         JSONObject empPhoto = null;
+        Integer deviceId = deviceHolder.getDevice().getId();
         if (data instanceof JSONObject) {
-            deviceId = ((JSONObject) data).getInt("deviceid");
-            personId = ((JSONObject) data).getInt("personid");
+            personId = ((JSONObject) data).getInt("empid");
             empPhoto = ((JSONObject) data).getJSONObject("empphoto");
         } else {
-            deviceId = deviceHolder.getDevice().getId();
             personId = empHolder.getEmployee().getEmpId();
         }
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?deviceid=" + deviceId + "&personid=" + personId, "GET", "application/json", "", true);
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (checkEmpDicRes.startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkEmpDicRes + "\"}");
         }
@@ -475,14 +480,17 @@ public class MainApp extends Components {
 
         String photoBase64;
         if (data instanceof JSONObject) {
-            photoBase64 = empPhoto.getString("photo");
+            photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
+            if (photoBase64.equalsIgnoreCase("unknown")) {
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
+            }
         } else {
             photoBase64 = ImplFunctions.functions.convertImageToBase64(data + ".jpg");
         }
-        showLoading(stage, true);
-        String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceHolder.getDevice().getId() + "\", \"personid\": \"" + empHolder.getEmployee().getEmpId() + "\", \"empid\": \"" + empHolder.getEmployee().getEmpId() + "\", \"photo\": \"" + photoBase64 + "\"}";
+//        showLoading(stage, true);
+        String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceId + "\", \"personid\": \"" + personId + "\", \"empid\": \"" + personId + "\", \"photo\": \"" + photoBase64 + "\"}";
         String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (storeDevEmpRes.startsWith("Request failed")) {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes + "\"}");
         }
@@ -519,15 +527,68 @@ public class MainApp extends Components {
         }
     }
 
-    public static boolean syncUserData(Stage stage, JSONObject jsonObject) {
-        JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject);
-        if (frtSentStatus.getString("code").startsWith("success")) {
-            JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject);
-            if (erpSentStatus.getString("code").startsWith("success")) {
-                return true;
+    public static JSONObject syncUserData(Stage stage, JSONObject jsonObject) {
+
+        JSONObject response = new JSONObject();
+        JSONObject employee = jsonObject.getJSONObject("employee");
+        if (employee.getInt("status") == 2) {
+            Boolean deleteUserFRTStatus = deleteEmpDataFaceRecogTerm(stage, jsonObject);
+            if (deleteUserFRTStatus) {
+                Boolean deleteUserERPStatus = deleteEmpDataERP(stage, jsonObject);
+                response.put("valid", deleteUserERPStatus);
+                if (deleteUserERPStatus) {
+                    response.put("info", "Success.");
+                } else {
+                    response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
+                }
+                return response;
+            }
+            response.put("valid", false);
+            response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
+            return response;
+        } else {
+            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject);
+            if (frtSentStatus.getString("code").startsWith("success")) {
+                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject);
+                if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image"))) {
+                    response.put("valid", true);
+                    response.put("info", "Success.");
+                    return response;
+                } else {
+                    response.put("valid", false);
+                    response.put("info", erpSentStatus.getString("msg"));
+                    return response;
+                }
+            } else if (frtSentStatus.getString("code").startsWith("error") && frtSentStatus.getString("msg").startsWith("Not found image")) {
+                response.put("valid", true);
+                response.put("info", "Success.");
+                return response;
+            } else {
+                response.put("valid", false);
+                response.put("info", frtSentStatus.getString("msg"));
+                return response;
             }
         }
-        return false;
+    }
+
+    public static boolean deleteEmpDataFaceRecogTerm(Stage stage, JSONObject jsonObject) {
+        Integer employeeNo = jsonObject.getInt("personid");
+        String delUserBody = "{\"UserInfoDelCond\":{\"EmployeeNoList\":[{\"employeeNo\":\"" + employeeNo + "\"}]}}";
+        DigestResponseData deleteUserStatus = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Delete?format=json", delUserBody, "application/json", "PUT");
+        if (deleteUserStatus.getContentType().startsWith("Request failed")) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean deleteEmpDataERP(Stage stage, JSONObject jsonObject) {
+        Integer dicId = jsonObject.getInt("dicid");
+        String delEmpDicBody = "{\"dicid\":" + dicId + "}";
+        String delEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/delempdic", "POST", "application/json", delEmpDicBody, true);
+        if (delEmpDicRes.startsWith("Request failed")) {
+            return false;
+        }
+        return true;
     }
 
     public static void showLoading(Stage stage, Boolean loading) {
