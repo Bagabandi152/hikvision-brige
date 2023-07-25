@@ -8,21 +8,17 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.constants.Components;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
-import mn.sync.hikvisionbrige.holders.DeviceHolder;
-import mn.sync.hikvisionbrige.holders.EmpHolder;
-import mn.sync.hikvisionbrige.holders.InstHolder;
-import mn.sync.hikvisionbrige.holders.UserHolder;
+import mn.sync.hikvisionbrige.holders.*;
 import mn.sync.hikvisionbrige.models.*;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -37,10 +33,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class MainApp extends Components {
 
@@ -49,6 +42,7 @@ public class MainApp extends Components {
     private static UserHolder userHolder = UserHolder.getInstance();
     private static InstHolder instHolder = InstHolder.getInstance();
     private static EmpHolder empHolder = EmpHolder.getInstance();
+    private static Permission permission = checkPermission("TRDeviceEmpDic");
 
     public static void start(Stage stage) {
 
@@ -58,20 +52,20 @@ public class MainApp extends Components {
         root.setPadding(new Insets(15, 25, 10, 25));
 
         //Create tableView
-//        ObservableList<TimeDataLog> logList = FXCollections.observableArrayList(TimeDataLog.getTimeDataLog());
-//        JSONArray tabCols = new JSONArray();
-//        String[][] tabColsData = {{"Device Name", "Institution", "Username", "Upload date", "Register date"}, {"deviceName", "instNameEng", "endUserNameEng", "uploadDate", "registerDate"}};
-//        for (int i = 0; i < tabColsData.length; i++) {
-//            for (int j = 0; j < tabColsData[0].length; j++) {
-//                JSONObject jsonObject = new JSONObject();
-//                if (i == 0) {
-//                    jsonObject.put("name", tabColsData[i][j]);
-//                } else {
-//                    jsonObject.put("key", tabColsData[i][j]);
-//                }
-//                tabCols.put(jsonObject);
-//            }
-//        }
+        ObservableList<Object> logList = FXCollections.observableArrayList();
+        JSONArray tabCols = new JSONArray();
+        String[][] tabColsData = {{"Device Name", "Department", "Username", "Upload date", "Register date"}, {"deviceName", "depNameEng", "endUserNameEng", "uploadDate", "registerDate"}};
+        for (int i = 0; i < 5; i++) {
+            JSONObject jsonObject = new JSONObject();
+            for (int j = 0; j < 2; j++) {
+                if (j == 0) {
+                    jsonObject.put("name", tabColsData[j][i]);
+                } else {
+                    jsonObject.put("key", tabColsData[j][i]);
+                }
+            }
+            tabCols.put(jsonObject);
+        }
 
         //Create ComboBox
         ComboBox<Device> comboBox = new ComboBox<>();
@@ -124,9 +118,6 @@ public class MainApp extends Components {
         HBox hBoxBtnDown = new HBox();
         hBoxBtnTop.setSpacing(10);
 
-        //Create ImageView
-        ImageView imageView = new ImageView();
-
         //Create Button to sync data
         Button syncBtn = new Button("Sync time data");
         EventHandler<ActionEvent> syncEvent = e -> {
@@ -157,7 +148,7 @@ public class MainApp extends Components {
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
             }
-            if (lastUploadRes == null || lastUploadRes.isEmpty()) {
+            if (lastUploadRes.isEmpty()) {
                 // Subtract 1 month from the current date
                 LocalDateTime oneMonthAgo = now.minusMonths(1);
 
@@ -212,7 +203,7 @@ public class MainApp extends Components {
                 ImplFunctions.functions.showAlert("Error", "", uploadResponse, Alert.AlertType.ERROR);
                 return;
             }
-            if (uploadResponse == null || uploadResponse.isEmpty() || uploadResponse.isBlank()) {
+            if (uploadResponse.isEmpty() || uploadResponse.isBlank()) {
                 ImplFunctions.functions.showAlert("Error Message", "", "When upload time, occurred error.", Alert.AlertType.ERROR);
                 BASE_URL = "";
                 comboBox.valueProperty().set(null);
@@ -328,39 +319,57 @@ public class MainApp extends Components {
                     ex.printStackTrace();
                 }
 
-                try {
-                    Image captureImage = new Image(new ByteArrayInputStream(Files.readAllBytes(destinationPath)));
-                    imageView.setImage(captureImage);
-                    imageView.setFitWidth(120);
-                    imageView.setFitHeight(180);
-                    root.getChildren().add(imageView);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-
-                sendUserData(stage, fileName, imageView, root);
+                sendUserData(stage, fileName, root);
             }
         };
         newBtn.setOnAction(addEmpEvent);
         hBoxBtnDown.getChildren().add(newBtn);
 
         //Add children to root
-        root.getChildren().add(getSeparatorWithLabel("Device section"));
-        root.getChildren().add(flowPane);
-        root.getChildren().add(sepTop);
-        root.getChildren().add(hBoxBtnTop);
-        root.getChildren().add(getSeparatorWithLabel("Employee section"));
-        root.getChildren().add(empFlowPane);
-        root.getChildren().add(sepDown);
-        root.getChildren().add(hBoxBtnDown);
-//        root.getChildren().add(Components.getTable(logList, tabCols));
+        if (permission.getUpdate()) {
+            root.getChildren().add(getSeparatorWithLabel("Device section"));
+            root.getChildren().add(flowPane);
+            root.getChildren().add(sepTop);
+            root.getChildren().add(hBoxBtnTop);
+            root.getChildren().add(getSeparatorWithLabel("Employee section"));
+            root.getChildren().add(empFlowPane);
+            root.getChildren().add(sepDown);
+            root.getChildren().add(hBoxBtnDown);
+            root.getChildren().add(Components.getTableWithScroll(logList, tabCols));
+        } else if (permission.getRead()) {
+            root.getChildren().add(getSeparatorWithLabel("Device section"));
+            root.getChildren().add(flowPane);
+            root.getChildren().add(sepTop);
+            root.getChildren().add(hBoxBtnTop);
+            root.getChildren().add(Components.getTableWithScroll(logList, tabCols));
+        } else {
+            Label permDenied = new Label("Permission denied.");
+            permDenied.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+            permDenied.setTextFill(Color.web("#F00"));
+            HBox contain = new HBox();
+            contain.setPadding(new Insets(10));
+            contain.getChildren().add(permDenied);
+            root.getChildren().add(contain);
+        }
 
         //Set config in stage
         stage.setResizable(false);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
-        Scene scene = new Scene(root, 345, 520);
+        Scene scene = new Scene(root, 345, permission.getUpdate() ? 480 : 350);
         stage.setScene(scene);
         stage.show();
+    }
+
+    public static Permission checkPermission(String perm) {
+        String checkPermRes = ImplFunctions.functions.ErpApiService("/checkpermemp?perm=" + perm + "&personid=" + userHolder.getActiveUser().getEmpId(), "GET", "application/json", "", true);
+        if (checkPermRes.startsWith("Request failed")) {
+            return null;
+        }
+
+        JSONObject resObj = new JSONObject(checkPermRes);
+        Permission newPerm = new Permission(resObj.getString("permid"), resObj.getString("rolename"), resObj.getBoolean("read"), resObj.getBoolean("update"), resObj.getBoolean("change"), resObj.getBoolean("create"), resObj.getBoolean("delete"));
+        PermissionHolder.getInstance().setPermission(newPerm);
+        return newPerm;
     }
 
     public static JSONObject sendEmpDataFaceRecogTerm(Stage stage, Object data) {
@@ -498,7 +507,7 @@ public class MainApp extends Components {
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
-    public static void sendUserData(Stage stage, String fileName, ImageView imageView, VBox root) {
+    public static void sendUserData(Stage stage, String fileName, VBox root) {
 
         JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, fileName);
         if (frtSentStatus.getString("code").startsWith("success")) {
@@ -518,8 +527,6 @@ public class MainApp extends Components {
             }
         }
 
-        imageView.setImage(null);
-        root.getChildren().remove(imageView);
         try {
             Files.delete(Path.of(fileName + ".jpg"));
         } catch (IOException e) {

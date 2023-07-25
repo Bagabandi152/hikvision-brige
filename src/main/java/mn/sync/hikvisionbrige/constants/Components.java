@@ -3,10 +3,7 @@ package mn.sync.hikvisionbrige.constants;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.*;
@@ -92,17 +89,17 @@ public abstract class Components {
         }
     }
 
-    public static TableView getTable(ObservableList list, JSONArray columns) {
-        TableView<Object> table = new TableView<Object>();
+    public static ScrollPane getTableWithScroll(ObservableList list, JSONArray columns) {
+        TableView<Object> table = new TableView<>();
         table.setPrefWidth(295);
-        table.setPrefHeight(150);
+        table.setPrefHeight(180);
 
-        Collection<TableColumn> columnArrayList = new ArrayList<>();
+        List<TableColumn<Object, ?>> columnArrayList = new ArrayList<>();
         for (int i = 0; i < columns.length(); i++) {
             JSONObject colObj = columns.getJSONObject(i);
             String colName = colObj.getString("name");
             String colKey = colObj.getString("key");
-            TableColumn<Object, String> tableColumn = new TableColumn<>(colName);
+            TableColumn<Object, ?> tableColumn = new TableColumn<>(colName);
             tableColumn.setCellValueFactory(new PropertyValueFactory<>(colKey));
             if (colObj.has("sortType")) {
                 String sortType = colObj.getString("sortType");
@@ -113,12 +110,18 @@ public abstract class Components {
                 }
             }
             if (colObj.has("sortAble")) {
-                tableColumn.setSortable(colObj.getBoolean("sortType"));
+                tableColumn.setSortable(colObj.getBoolean("sortAble"));
             }
             columnArrayList.add(tableColumn);
         }
         table.setItems(list);
-        table.getColumns().addAll((TableColumn<Object, ?>) columnArrayList);
-        return table;
+        table.getColumns().addAll(columnArrayList);
+
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setContent(table);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setFitToWidth(true);
+
+        return scrollPane;
     }
 }
