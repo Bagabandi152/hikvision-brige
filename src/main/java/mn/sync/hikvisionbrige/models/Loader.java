@@ -4,11 +4,9 @@ import javafx.scene.Scene;
 
 public class Loader {
     Scene scene;
-    volatile Thread thread;
 
-    public Loader(Scene scene, Thread thread) {
+    public Loader(Scene scene) {
         this.scene = scene;
-        this.thread = thread;
     }
 
     public Scene getScene() {
@@ -17,13 +15,5 @@ public class Loader {
 
     public void setScene(Scene scene) {
         this.scene = scene;
-    }
-
-    public Thread getThread() {
-        return thread;
-    }
-
-    public void setThread(Thread thread) {
-        this.thread = thread;
     }
 }

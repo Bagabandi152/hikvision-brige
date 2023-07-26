@@ -47,27 +47,16 @@ public abstract class Components {
         return hbox;
     }
 
+    private static LoadingHolder loadingHolder = LoadingHolder.getInstance();
     public static void getSpinningLoader(Stage stage, Boolean loading) {
-
-        LoadingHolder loadingHolder = LoadingHolder.getInstance();
         if (loading) {
-            loadingHolder.setLoader(new Loader(stage.getScene(), new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(30000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            })));
+            loadingHolder.setLoader(new Loader(stage.getScene()));
         }
 
         Loader loader = loadingHolder.getLoader();
         System.out.println("Loading: " + loading);
 
         if (loading) {
-            loader.getThread().start();
             HBox root = new HBox();
             Scene scene = new Scene(root, stage.getScene().getWidth(), stage.getScene().getHeight());
 
@@ -77,15 +66,8 @@ public abstract class Components {
             root.getChildren().add(progress);
             stage.setScene(scene);
         } else {
-//            ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-//
-//            int delayInSeconds = 2;
-//            Runnable delayedTask = () -> {
             stage.setScene(loader.getScene());
             loadingHolder.clear();
-//            };
-//
-//            executor.schedule(delayedTask, delayInSeconds, TimeUnit.SECONDS);
         }
     }
 

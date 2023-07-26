@@ -12,7 +12,6 @@ import mn.sync.hikvisionbrige.models.Loader;
 public final class LoadingHolder {
 
     private Loader loader;
-    private volatile boolean stopThread;
     private final static LoadingHolder INSTANCE = new LoadingHolder();
 
     private LoadingHolder() {
@@ -31,12 +30,6 @@ public final class LoadingHolder {
     }
 
     public void clear() {
-        stopThread = true;
-        loader.getThread().stop();
         loader = null;
-    }
-
-    public boolean shouldStopThread() {
-        return stopThread;
     }
 }
