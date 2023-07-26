@@ -1,13 +1,12 @@
 package mn.sync.hikvisionbrige;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -16,6 +15,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import mn.sync.hikvisionbrige.appender.LogTableViewAppender;
 import mn.sync.hikvisionbrige.constants.Components;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.*;
@@ -23,6 +23,10 @@ import mn.sync.hikvisionbrige.models.*;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,11 +42,13 @@ import java.util.Base64;
 public class MainApp extends Components {
 
     private static String BASE_URL = "";
-    private static DeviceHolder deviceHolder = DeviceHolder.getInstance();
-    private static UserHolder userHolder = UserHolder.getInstance();
-    private static InstHolder instHolder = InstHolder.getInstance();
-    private static EmpHolder empHolder = EmpHolder.getInstance();
-    private static Permission permission = checkPermission("TRDeviceEmpDic");
+    private static final DeviceHolder deviceHolder = DeviceHolder.getInstance();
+    private static final UserHolder userHolder = UserHolder.getInstance();
+    private static final InstHolder instHolder = InstHolder.getInstance();
+    private static final EmpHolder empHolder = EmpHolder.getInstance();
+    private static final Permission permission = checkPermission("TRDeviceEmpDic");
+    private static TableView<LogData> logTableView;
+    private static Logger logger = LogManager.getLogger(MainApp.class);
 
     public static void start(Stage stage) {
 
@@ -51,11 +57,10 @@ public class MainApp extends Components {
         root.setSpacing(10);
         root.setPadding(new Insets(15, 25, 10, 25));
 
-        //Create tableView
-        ObservableList<Object> logList = FXCollections.observableArrayList();
+        //Create tableView columns data
         JSONArray tabCols = new JSONArray();
-        String[][] tabColsData = {{"Device Name", "Department", "Username", "Upload date", "Register date"}, {"deviceName", "depNameEng", "endUserNameEng", "uploadDate", "registerDate"}};
-        for (int i = 0; i < 5; i++) {
+        String[][] tabColsData = {{"Timestamp", "Level", "Logger", "Message"}, {"timestamp", "level", "logger", "message"}};
+        for (int i = 0; i < 4; i++) {
             JSONObject jsonObject = new JSONObject();
             for (int j = 0; j < 2; j++) {
                 if (j == 0) {
@@ -123,6 +128,7 @@ public class MainApp extends Components {
         EventHandler<ActionEvent> syncEvent = e -> {
             if (BASE_URL.isEmpty()) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
                 return;
             }
 
@@ -145,6 +151,7 @@ public class MainApp extends Components {
             String lastUploadRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getlastupload", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
 //            showLoading(stage, false);
             if (lastUploadRes.startsWith("Request failed")) {
+                logger.error("Get last upload date: " + lastUploadRes);
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
             }
@@ -161,8 +168,10 @@ public class MainApp extends Components {
                     DateTimeFormatter simpleFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
                     LocalDateTime dateTime = LocalDateTime.parse(lastUploadDate, simpleFormatter);
                     startDate = dateTime.atOffset(zoneOffset).format(formatter);
+                    logger.info("Last upload date is successfully formatted.");
                 } catch (JSONException ex) {
                     ex.printStackTrace();
+                    logger.error("When format last upload date, occurred error.");
                 }
             }
             System.out.println("startDate: " + startDate);
@@ -173,6 +182,7 @@ public class MainApp extends Components {
             DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
 //            showLoading(stage, false);
             if (responseBody.getContentType().startsWith("Request failed")) {
+                logger.error("AcsEvent error: " + requestBody);
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
                 return;
             }
@@ -191,8 +201,12 @@ public class MainApp extends Components {
                         mapJo.put("time", offsetDateTime.format(dateFormat));
                         sentArray.put(mapJo);
                     }
+                    logger.info("AcsEvent response is successfully converted.");
+                } else {
+                    logger.warn("AcsEvent response hasn't attribute InfoList");
                 }
             } catch (JSONException ex) {
+                logger.error("When convert AcsEvent response to json, occurred error.");
                 ex.printStackTrace();
             }
 
@@ -200,16 +214,20 @@ public class MainApp extends Components {
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
 //            showLoading(stage, false);
             if (uploadResponse.startsWith("Request failed")) {
+                logger.error("Insert time data error: " + uploadResponse);
                 ImplFunctions.functions.showAlert("Error", "", uploadResponse, Alert.AlertType.ERROR);
                 return;
             }
             if (uploadResponse.isEmpty() || uploadResponse.isBlank()) {
+                logger.error("When insert time data to ERP, occurred error.");
                 ImplFunctions.functions.showAlert("Error Message", "", "When upload time, occurred error.", Alert.AlertType.ERROR);
                 BASE_URL = "";
                 comboBox.valueProperty().set(null);
                 comboBox.setPromptText("Select . . .");
                 return;
             }
+            logger.info("Successfully inserted time data to ERP.");
+            logger.info(sentArray.length() + " rows time data inserted.");
             ImplFunctions.functions.showAlert("Success Message", "", "Successfully synced time data.", Alert.AlertType.INFORMATION);
         };
         syncBtn.setOnAction(syncEvent);
@@ -220,6 +238,7 @@ public class MainApp extends Components {
         EventHandler syncEmpDataEvent = e -> {
             if (BASE_URL.isEmpty()) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
                 return;
             }
 
@@ -228,6 +247,7 @@ public class MainApp extends Components {
             String otherDevEmpListRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/getotherdevemps", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
 //            showLoading(stage, false);
             if (otherDevEmpListRes.startsWith("Request failed")) {
+                logger.error("Get other device employees error: " + otherDevEmpListRes);
                 ImplFunctions.functions.showAlert("Error", "", otherDevEmpListRes, Alert.AlertType.ERROR);
                 return;
             }
@@ -247,8 +267,11 @@ public class MainApp extends Components {
 //            showLoading(stage, false);
 
             if (!isAllSent) {
+                logger.error("When insert employee data to ERP, occurred error.");
+                logger.error(sentStatus.getString("info"));
                 ImplFunctions.functions.showAlert("Error", "", sentStatus.getString("info"), Alert.AlertType.ERROR);
             } else {
+                logger.info("Get other device employees error: " + otherDevEmpListRes);
                 ImplFunctions.functions.showAlert("Success", "", "Successfully sync employees data.", Alert.AlertType.INFORMATION);
             }
         };
@@ -260,11 +283,13 @@ public class MainApp extends Components {
         EventHandler<ActionEvent> addEmpEvent = e -> {
             if (BASE_URL.isEmpty()) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
                 return;
             }
 
             if (empHolder.getEmployee() == null) {
                 empComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Employee field is required.");
                 return;
             }
 
@@ -273,6 +298,7 @@ public class MainApp extends Components {
             DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST");
 //            showLoading(stage, false);
             if (captureRes.getContentType().startsWith("Request failed")) {
+                logger.error("Capture face data error: " + captureRes.getBody());
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + captureRes.getBody(), Alert.AlertType.ERROR);
                 return;
             }
@@ -280,8 +306,10 @@ public class MainApp extends Components {
             if ("application/xml".equals(captureRes.getContentType())) {
                 JSONObject capBody = (JSONObject) captureRes.getBody();
                 if (capBody.has("CaptureFaceData") && capBody.getJSONObject("CaptureFaceData").has("captureProgress") && capBody.getJSONObject("CaptureFaceData").getInt("captureProgress") == 0) {
+                    logger.warn("Don't capture dace data. Try again.");
                     ImplFunctions.functions.showAlert("Warning", "", "Don't capture face data. Try again.", Alert.AlertType.WARNING);
                 } else {
+                    logger.error("When capture face data, occurred error.\n\nResponse:\n" + captureRes.getBody());
                     ImplFunctions.functions.showAlert("Error", "", "When capture face data, occurred error.\n\nResponse:\n" + captureRes.getBody(), Alert.AlertType.ERROR);
                 }
             } else {
@@ -290,7 +318,9 @@ public class MainApp extends Components {
                 Path sourcePath = Paths.get(fileName + ".txt");
                 try {
                     Files.write(sourcePath, (byte[]) captureRes.getBody());
+                    logger.info(fileName + ".txt file created.");
                 } catch (IOException ex) {
+                    logger.error(fileName + ".txt file cannot write.");
                     ex.printStackTrace();
                 }
 
@@ -314,8 +344,11 @@ public class MainApp extends Components {
                         outputStream.write(buffer, 0, bytesRead);
                     }
 
+                    logger.info(fileName + ".jpg file created.");
+                    logger.info(fileName + ".txt file deleted.");
                     Files.delete(sourcePath);
                 } catch (IOException ex) {
+                    logger.error(fileName + ".jpg file cannot write or source text file cannot delete.");
                     ex.printStackTrace();
                 }
 
@@ -325,8 +358,26 @@ public class MainApp extends Components {
         newBtn.setOnAction(addEmpEvent);
         hBoxBtnDown.getChildren().add(newBtn);
 
+        logTableView = new TableView<>();
+        logTableView.setPrefWidth(420);
+        logTableView.setPrefHeight(180);
+
+        TableColumn<LogData, String> timestampColumn = new TableColumn<>("Timestamp");
+        timestampColumn.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
+
+        TableColumn<LogData, String> levelColumn = new TableColumn<>("Level");
+        levelColumn.setCellValueFactory(new PropertyValueFactory<>("level"));
+
+        TableColumn<LogData, String> loggerColumn = new TableColumn<>("Logger");
+        loggerColumn.setCellValueFactory(new PropertyValueFactory<>("logger"));
+
+        TableColumn<LogData, String> messageColumn = new TableColumn<>("Message");
+        messageColumn.setCellValueFactory(new PropertyValueFactory<>("message"));
+
+        logTableView.getColumns().addAll(timestampColumn, levelColumn, messageColumn, loggerColumn);
+
         //Add children to root
-        if (permission.getUpdate()) {
+        if (permission.getCreate()) {
             root.getChildren().add(getSeparatorWithLabel("Device section"));
             root.getChildren().add(flowPane);
             root.getChildren().add(sepTop);
@@ -335,13 +386,11 @@ public class MainApp extends Components {
             root.getChildren().add(empFlowPane);
             root.getChildren().add(sepDown);
             root.getChildren().add(hBoxBtnDown);
-            root.getChildren().add(Components.getTableWithScroll(logList, tabCols));
         } else if (permission.getRead()) {
             root.getChildren().add(getSeparatorWithLabel("Device section"));
             root.getChildren().add(flowPane);
             root.getChildren().add(sepTop);
             root.getChildren().add(hBoxBtnTop);
-            root.getChildren().add(Components.getTableWithScroll(logList, tabCols));
         } else {
             Label permDenied = new Label("Permission denied.");
             permDenied.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
@@ -351,24 +400,45 @@ public class MainApp extends Components {
             contain.getChildren().add(permDenied);
             root.getChildren().add(contain);
         }
+        root.getChildren().add(logTableView);
+
+        // Initialize Log4j2 and set up a custom appender to add log messages to the TableView
+        LogTableViewAppender appender = new LogTableViewAppender(logTableView);
+        appender.start();
+
+        // Add the appender to Log4j2's root logger
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        Configuration config = context.getConfiguration();
+        config.getRootLogger().addAppender(appender, null, null);
+
+        // Optional: Set log level to display (e.g., TRACE, DEBUG, INFO, WARN, ERROR, etc.)
+        // config.getRootLogger().setLevel(Level.DEBUG);
+
+        // Update the TableView whenever new log messages are received
+        appender.setOnLogUpdate(logTableView::refresh);
 
         //Set config in stage
         stage.setResizable(false);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
-        Scene scene = new Scene(root, 345, permission.getUpdate() ? 480 : 350);
+        Scene scene = new Scene(root, 345, permission.getCreate() ? 480 : permission.getRead() ? 350 : 260);
         stage.setScene(scene);
         stage.show();
+
+        logger.info("Login is successful.");
+        logger.info("Face recognition terminal is started.");
     }
 
     public static Permission checkPermission(String perm) {
         String checkPermRes = ImplFunctions.functions.ErpApiService("/checkpermemp?perm=" + perm + "&personid=" + userHolder.getActiveUser().getEmpId(), "GET", "application/json", "", true);
         if (checkPermRes.startsWith("Request failed")) {
+            logger.error(checkPermRes);
             return null;
         }
 
         JSONObject resObj = new JSONObject(checkPermRes);
         Permission newPerm = new Permission(resObj.getString("permid"), resObj.getString("rolename"), resObj.getBoolean("read"), resObj.getBoolean("update"), resObj.getBoolean("change"), resObj.getBoolean("create"), resObj.getBoolean("delete"));
         PermissionHolder.getInstance().setPermission(newPerm);
+        logger.info("Permission checked.");
         return newPerm;
     }
 
@@ -402,11 +472,13 @@ public class MainApp extends Components {
         DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT");
 //        showLoading(stage, false);
         if (setUserInfoRes.getContentType().startsWith("Request failed")) {
+            logger.error("UserInfo SetUp Error: " + setUserInfoRes.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
         }
 
         JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
         if (!setUserInfoResObj.getString("statusString").equals("OK")) {
+            logger.error(setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode"));
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") + "\"}");
         }
 
@@ -415,15 +487,18 @@ public class MainApp extends Components {
         DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
 //        showLoading(stage, false);
         if (checkFaceExist.getContentType().startsWith("Request failed")) {
+            logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
         }
 
         JSONObject checkFaceResObj = new JSONObject(checkFaceExist.getBody().toString());
         if (checkFaceResObj.getString("statusString").equals("OK")) {
             if (checkFaceResObj.getString("responseStatusStrg").equals("OK")) {
+                logger.warn("Face data is already existed.");
                 return new JSONObject("{\"code\": \"warning\", \"msg\": \"Face data is already existed.\"}");
             }
         } else {
+            logger.error(checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"));
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode") + "\"}");
         }
 
@@ -436,6 +511,7 @@ public class MainApp extends Components {
             fileName = "tmp/CaptureFaceData_" + employeeNo + "_" + System.currentTimeMillis() + "_" + ((int) (Math.random() * 99999) + 10000);
             String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
             if (empPhotoBase64.equalsIgnoreCase("unknown")) {
+                logger.warn(empName + "'s image not found!");
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
             } else {
                 photoBytes = Base64.getDecoder().decode(empPhotoBase64);
@@ -445,6 +521,7 @@ public class MainApp extends Components {
             try {
                 photoBytes = Files.readAllBytes(Path.of(fileName + ".jpg"));
             } catch (IOException e) {
+                logger.error(fileName + ".jpg cannot read.");
                 throw new RuntimeException(e);
             }
         }
@@ -454,14 +531,17 @@ public class MainApp extends Components {
         DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
 //        showLoading(stage, false);
         if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
+            logger.error("FDLib FaceDataRecord Error: " + saveUserFaceRes.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
         }
 
         JSONObject saveUserFaceResObj = new JSONObject(saveUserFaceRes.getBody().toString());
         if (!saveUserFaceResObj.getString("statusString").equals("OK")) {
+            logger.error(saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode"));
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode") + "\"}");
         }
 
+        logger.info("Sent employee data to FRT.");
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
@@ -480,10 +560,12 @@ public class MainApp extends Components {
         String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?deviceid=" + deviceId + "&personid=" + personId, "GET", "application/json", "", true);
 //        showLoading(stage, false);
         if (checkEmpDicRes.startsWith("Request failed")) {
+            logger.error("Get device employees error: " + checkEmpDicRes);
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkEmpDicRes + "\"}");
         }
         JSONArray jsonArray = new JSONArray(checkEmpDicRes);
         if (jsonArray.length() > 0) {
+            logger.warn("Employee is already existed.");
             return new JSONObject("{\"code\": \"warning\", \"msg\": \"Employee is already existed.\"}");
         }
 
@@ -491,6 +573,7 @@ public class MainApp extends Components {
         if (data instanceof JSONObject) {
             photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
             if (photoBase64.equalsIgnoreCase("unknown")) {
+                logger.error("Not found image (" + empPhoto.getString("id") + ")");
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
             }
         } else {
@@ -501,9 +584,11 @@ public class MainApp extends Components {
         String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
 //        showLoading(stage, false);
         if (storeDevEmpRes.startsWith("Request failed")) {
+            logger.error("When insert device employee data, occurred error: " + storeDevEmpRes);
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes + "\"}");
         }
 
+        logger.info("Sent employee data to ERP.");
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
@@ -530,6 +615,7 @@ public class MainApp extends Components {
         try {
             Files.delete(Path.of(fileName + ".jpg"));
         } catch (IOException e) {
+            logger.error(fileName + ".jpg file cannot delete.");
             e.printStackTrace();
         }
     }
@@ -545,13 +631,16 @@ public class MainApp extends Components {
                 response.put("valid", deleteUserERPStatus);
                 if (deleteUserERPStatus) {
                     response.put("info", "Success.");
+                    logger.info("Successfully delete face data from FRT.");
                 } else {
                     response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
+                    logger.error("When delete face data from Face Recognition Terminal, occurred error.");
                 }
                 return response;
             }
             response.put("valid", false);
             response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
+            logger.error("When delete face data from Face Recognition Terminal, occurred error.");
             return response;
         } else {
             JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject);
@@ -560,19 +649,23 @@ public class MainApp extends Components {
                 if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image"))) {
                     response.put("valid", true);
                     response.put("info", "Success.");
+                    logger.info("Successfully sent employee data to ERP.");
                     return response;
                 } else {
                     response.put("valid", false);
                     response.put("info", erpSentStatus.getString("msg"));
+                    logger.error(erpSentStatus.getString("msg"));
                     return response;
                 }
             } else if (frtSentStatus.getString("code").startsWith("error") && frtSentStatus.getString("msg").startsWith("Not found image")) {
                 response.put("valid", true);
                 response.put("info", "Success.");
+                logger.info("Successfully sent employee data to FRT.");
                 return response;
             } else {
                 response.put("valid", false);
                 response.put("info", frtSentStatus.getString("msg"));
+                logger.error(frtSentStatus.getString("msg"));
                 return response;
             }
         }
@@ -583,6 +676,7 @@ public class MainApp extends Components {
         String delUserBody = "{\"UserInfoDelCond\":{\"EmployeeNoList\":[{\"employeeNo\":\"" + employeeNo + "\"}]}}";
         DigestResponseData deleteUserStatus = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Delete?format=json", delUserBody, "application/json", "PUT");
         if (deleteUserStatus.getContentType().startsWith("Request failed")) {
+            logger.error("UserInfo Delete Error: " + deleteUserStatus);
             return false;
         }
         return true;
@@ -593,6 +687,7 @@ public class MainApp extends Components {
         String delEmpDicBody = "{\"dicid\":" + dicId + "}";
         String delEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/delempdic", "POST", "application/json", delEmpDicBody, true);
         if (delEmpDicRes.startsWith("Request failed")) {
+            logger.error("Delete device employee data error: " + delEmpDicRes);
             return false;
         }
         return true;

@@ -25,6 +25,8 @@ import mn.sync.hikvisionbrige.models.InstShortInfo;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * @author Bagaa
@@ -42,8 +44,11 @@ public class Login extends Application {
         launch(args);
     }
 
+    private static Logger logger = LogManager.getLogger(Login.class);
+
     @Override
     public void start(Stage primaryStage) {
+        logger.info("Sync ERP Login is started.");
 
         // Create the GridPane layout
         GridPane gridPane = new GridPane();
@@ -84,11 +89,13 @@ public class Login extends Application {
             String password = passwordField.getText();
 
             if (userName.isEmpty()) {
+                logger.warn("Username is required!");
                 usernameTextField.setStyle("-fx-border-color: #f00; -fx-border-radius: 3px;");
                 return;
             }
 
             if (password.isEmpty()) {
+                logger.warn("Password is required!");
                 passwordField.setStyle("-fx-border-color: #f00; -fx-border-radius: 3px;");
                 return;
             }
@@ -105,8 +112,10 @@ public class Login extends Application {
 //                    MainApp.showLoading(primaryStage, false);
                     assert step2Object != null;
                     if (step2Object.getString("responsecode").equals("chooseInst")) {
+                        logger.warn("Choose institution.");
                         chooseInst(primaryStage, gridPane, step2Object, userName, password);
                     } else if (step2Object.getString("responsecode").equals("requiredMFA")) {
+                        logger.warn("Required FMA.");
                         gridPane.getChildren().clear();
                         gridPane.setPadding(new Insets(30));
                         Label comboLabel = new Label("Enter google authentication code:");
@@ -115,17 +124,21 @@ public class Login extends Application {
                         TextField textField = new TextField();
                         textField.textProperty().addListener((observable, oldValue, newValue) -> {
                             if (newValue.length() == 6) {
-                                JSONObject step4Object = null;
+                                JSONObject step4Object;
                                 try {
 //                                    MainApp.showLoading(primaryStage, true);
                                     step4Object = validateLogin(userName, password, null, 4, step2Object.getString("steptoken"), newValue);
 //                                    MainApp.showLoading(primaryStage, false);
                                     assert step4Object != null;
                                     if (step4Object.getString("responsecode").equals("chooseInst")) {
+                                        logger.warn("Choose institution.");
                                         chooseInst(primaryStage, gridPane, step4Object, userName, password);
+                                    } else {
+                                        logger.error("Choose institution error!");
                                     }
                                 } catch (JSONException ex) {
                                     ex.printStackTrace();
+                                    logger.error("Required FMA error!");
                                 }
                             }
                         });
@@ -133,13 +146,16 @@ public class Login extends Application {
                         gridPane.add(textField, 0, 1);
                     } else {
                         loginError(step2Object.getString("responsecode"));
+                        logger.error("Choose institution or required FMA error!");
                     }
                 } else {
                     loginError(step1Object.getString("responsecode"));
+                    logger.error("Enter password error!");
                 }
             } catch (JSONException ex) {
                 ex.printStackTrace();
                 loginError("notFound");
+                logger.error("User not found!");
             }
         });
         gridPane.add(loginButton, 1, 2);
@@ -153,7 +169,7 @@ public class Login extends Application {
     }
 
     public void chooseInst(Stage stage, GridPane gridPane, JSONObject stepObject, String userName, String password) {
-        JSONArray instList = null;
+        JSONArray instList;
         try {
             JSONObject jsonObject = stepObject.getJSONObject("data");
             instList = jsonObject.getJSONArray("insts");
@@ -180,15 +196,18 @@ public class Login extends Application {
 //                    MainApp.showLoading(stage, false);
                     assert step3Object != null;
                     if (step3Object.getString("responsecode").equals("success")) {
+                        logger.info("Login success.");
                         JSONObject successData = step3Object.getJSONObject("data");
                         UserHolder.getInstance().setActiveUser(new ActiveUser(successData.getInt("id"), successData.getInt("empid"), successData.getString("name"), successData.getString("email")));
                         CookieHolder.getInstance().setCookie("login", successData.getString("access_token"));
                         loginSuccess(userName, stage);
                     } else {
                         loginError(step3Object.getString("responsecode"));
+                        logger.error("Choose institution error: " + step3Object.getString("responsecode"));
                     }
                 } catch (JSONException ex) {
                     loginError("InstNotFound");
+                    logger.error("Institution not found!");
                     ex.printStackTrace();
                 }
             });
@@ -231,15 +250,18 @@ public class Login extends Application {
         String response = ImplFunctions.functions.ErpApiService("/auth/login", "POST", "application/json", requestBody, false);
         if (response.startsWith("Request failed")) {
             ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
+            logger.error(response);
             return null;
         }
         try {
             if (response.isEmpty()) {
+                logger.warn("Validate login response is null.");
                 return null;
             }
             return new JSONObject(response.toString());
         } catch (JSONException e) {
             e.printStackTrace();
+            logger.error("Validate login error.");
             return null;
         }
     }

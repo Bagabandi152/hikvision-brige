@@ -4,6 +4,8 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,10 +51,13 @@ public class Employee {
         return endUserNameEng;
     }
 
+    private static Logger logger = LogManager.getLogger(Employee.class);
+
     public static ObservableList<Employee> getEmpList() {
         ObservableList<Employee> list = FXCollections.observableArrayList();
         String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getactiveemps", "POST", "application/json", "{\"status\": 1}", true);
         if (response.startsWith("Request failed")) {
+            logger.error("Fetch active employees from ERP: " + response);
             ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return list;
         }
@@ -60,6 +65,7 @@ public class Employee {
         JSONArray jsonArray;
         try {
             if (response == null) {
+                logger.error("When fetch employee list from server, occurred error.");
                 ImplFunctions.functions.showAlert("Error", "", "When fetch employee list from server, occurred error.", Alert.AlertType.ERROR);
                 return list;
             }
@@ -70,6 +76,7 @@ public class Employee {
                 list.add(newEmployee);
             }
         } catch (JSONException e) {
+            logger.error("Response cannot convert to json array.");
             e.printStackTrace();
         }
 

@@ -3,7 +3,10 @@ package mn.sync.hikvisionbrige.models;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
+import mn.sync.hikvisionbrige.MainApp;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,6 +34,8 @@ public class Device {
     public Device() {
         this(-1, "", "", "");
     }
+
+    private static Logger logger = LogManager.getLogger(Device.class);
 
     /**
      * get field
@@ -105,6 +110,7 @@ public class Device {
         ObservableList<Device> list = FXCollections.observableArrayList();
         String response = ImplFunctions.functions.ErpApiService("/timerpt/device", "GET", "application/json", "", true);
         if (response.startsWith("Request failed")) {
+            logger.error("Get devices from ERP: " + response);
             ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
             return list;
         }
@@ -112,6 +118,7 @@ public class Device {
         JSONArray jsonArray;
         try {
             if (response == null) {
+                logger.error("When fetch device list from server, occurred error.");
                 ImplFunctions.functions.showAlert("Error", "", "When fetch device list from server, occurred error.", Alert.AlertType.ERROR);
                 return list;
             }
@@ -124,6 +131,7 @@ public class Device {
             }
         } catch (JSONException e) {
             e.printStackTrace();
+            logger.error("Response cannot convert to json array.");
         }
 
         return list;
