@@ -79,8 +79,8 @@ public class Login extends Application {
         gridPane.add(passwordField, 1, 1);
 
         //Login form set default values
-        usernameTextField.setText("Bagabandi@sync.mn");
-        passwordField.setText("Bagaa010520");
+//        usernameTextField.setText("Bagabandi@sync.mn");
+//        passwordField.setText("Bagaa010520");
 
         // Add Login button
         Button loginButton = new Button("Login");
