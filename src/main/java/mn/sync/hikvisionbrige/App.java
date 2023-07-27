@@ -3,7 +3,7 @@ package mn.sync.hikvisionbrige;
 /**
  * @author Bagaa
  * @project hikvision-brige
- * @created 26/07/2023 - 7:42 PM
+ * @created 27/07/2023 - 11:36 AM
  * @purpose
  * @definition
  */
