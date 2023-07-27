@@ -427,7 +427,7 @@ public class MainApp extends Components {
     }
 
     public static Permission checkPermission(String perm) {
-        String checkPermRes = ImplFunctions.functions.ErpApiService("/checkpermemp?perm=" + perm + "&empid=" + userHolder.getActiveUser().getEmpId(), "GET", "application/json", "", true);
+        String checkPermRes = ImplFunctions.functions.ErpApiService("/checkperm?perm=" + perm, "GET", "application/json", "", true);
         if (checkPermRes.startsWith("Request failed")) {
             logger.error(checkPermRes);
             return null;
