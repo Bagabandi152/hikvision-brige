@@ -3,6 +3,7 @@ package mn.sync.hikvisionbrige;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.image.Image;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
@@ -122,6 +123,7 @@ public class Login extends Application {
                         comboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
 
                         TextField textField = new TextField();
+                        textField.setPrefWidth(280);
                         textField.textProperty().addListener((observable, oldValue, newValue) -> {
                             if (newValue.length() == 6) {
                                 JSONObject step4Object;
@@ -163,6 +165,7 @@ public class Login extends Application {
         // Create the Scene and set it on the Stage
         Scene scene = new Scene(gridPane, 300, 150);
         primaryStage.setTitle("ERP-Sync Systems Login");
+        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/favicon.png")));
         primaryStage.setResizable(false);
         primaryStage.setScene(scene);
         primaryStage.show();
