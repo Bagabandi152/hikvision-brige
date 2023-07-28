@@ -184,7 +184,7 @@ public class MainApp extends Components {
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
             }
-            if (lastUploadRes.isEmpty() || lastUploadRes.equals("null")) {
+            if (lastUploadRes.isEmpty() || lastUploadRes.equals("null") || lastUploadRes == null) {
                 // Subtract 1 month from the current date
                 LocalDateTime oneMonthAgo = now.minusMonths(1);
 
