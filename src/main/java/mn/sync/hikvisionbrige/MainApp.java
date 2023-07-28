@@ -15,8 +15,10 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 import mn.sync.hikvisionbrige.appender.LogTableViewAppender;
 import mn.sync.hikvisionbrige.constants.Components;
+import mn.sync.hikvisionbrige.constants.FxUtils;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.*;
 import mn.sync.hikvisionbrige.models.*;
@@ -86,6 +88,19 @@ public class MainApp extends Components {
             comboBox.setStyle("-fx-border-color: none;");
             deviceHolder.setDevice(newValue);
         });
+        FxUtils.autoCompleteComboBoxPlus(comboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getIpAddress().equals(typedText));
+        comboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Device object) {
+                return object != null ? object.getName() : "";
+            }
+
+            @Override
+            public Device fromString(String string) {
+                return comboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
+            }
+
+        });
 
         ComboBox<Employee> empComboBox = new ComboBox<>();
         empComboBox.setItems(Employee.getEmpList());
@@ -95,6 +110,19 @@ public class MainApp extends Components {
         empComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             empComboBox.setStyle("-fx-border-color: none;");
             empHolder.setEmployee(newValue);
+        });
+        FxUtils.autoCompleteComboBoxPlus(empComboBox, (typedText, itemToCompare) -> itemToCompare.getEndUserNameEng().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEndUserName().equals(typedText));
+        empComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Employee object) {
+                return object != null ? object.getEndUserNameEng() : "";
+            }
+
+            @Override
+            public Employee fromString(String string) {
+                return empComboBox.getItems().stream().filter(object -> object.getEndUserNameEng().equals(string)).findFirst().orElse(null);
+            }
+
         });
 
         //Create FlowPane, then add ComboBox
@@ -148,15 +176,15 @@ public class MainApp extends Components {
             endDate = now.atOffset(zoneOffset).format(formatter);
 
             Device activeDevice = deviceHolder.getDevice();
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String lastUploadRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/getlastupload", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (lastUploadRes.startsWith("Request failed")) {
                 logger.error("Get last upload date: " + lastUploadRes);
                 ImplFunctions.functions.showAlert("Error", "", lastUploadRes, Alert.AlertType.ERROR);
                 return;
             }
-            if (lastUploadRes.isEmpty()) {
+            if (lastUploadRes.isEmpty() || lastUploadRes.equals("null")) {
                 // Subtract 1 month from the current date
                 LocalDateTime oneMonthAgo = now.minusMonths(1);
 
@@ -179,9 +207,9 @@ public class MainApp extends Components {
             System.out.println("endDate: " + endDate);
 
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-            showLoading(stage, true);
+//            showLoading(stage, true);
             DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (responseBody.getContentType().startsWith("Request failed")) {
                 logger.error("AcsEvent error: " + requestBody);
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
@@ -211,9 +239,9 @@ public class MainApp extends Components {
                 ex.printStackTrace();
             }
 
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (uploadResponse.startsWith("Request failed")) {
                 logger.error("Insert time data error: " + uploadResponse);
                 ImplFunctions.functions.showAlert("Error", "", uploadResponse, Alert.AlertType.ERROR);
@@ -244,9 +272,9 @@ public class MainApp extends Components {
             }
 
             Device activeDevice = deviceHolder.getDevice();
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String otherDevEmpListRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/getotherdevemps", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + "}", true);
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (otherDevEmpListRes.startsWith("Request failed")) {
                 logger.error("Get other device employees error: " + otherDevEmpListRes);
                 ImplFunctions.functions.showAlert("Error", "", otherDevEmpListRes, Alert.AlertType.ERROR);
@@ -254,7 +282,7 @@ public class MainApp extends Components {
             }
 
             JSONArray otherDevEmpList = new JSONArray(otherDevEmpListRes);
-            showLoading(stage, true);
+//            showLoading(stage, true);
             Boolean isAllSent = true;
             JSONObject sentStatus = null;
             for (int i = 0; i < otherDevEmpList.length(); i++) {
@@ -265,7 +293,7 @@ public class MainApp extends Components {
                     break;
                 }
             }
-            showLoading(stage, false);
+//            showLoading(stage, false);
 
             if (!isAllSent) {
                 logger.error("When insert employee data to ERP, occurred error.");
@@ -294,10 +322,10 @@ public class MainApp extends Components {
                 return;
             }
 
-            showLoading(stage, true);
+//            showLoading(stage, true);
             String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
             DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST");
-            showLoading(stage, false);
+//            showLoading(stage, false);
             if (captureRes.getContentType().startsWith("Request failed")) {
                 logger.error("Capture face data error: " + captureRes.getBody());
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + captureRes.getBody(), Alert.AlertType.ERROR);
@@ -360,20 +388,22 @@ public class MainApp extends Components {
         hBoxBtnDown.getChildren().add(newBtn);
 
         logTableView = new TableView<>();
-        logTableView.setPrefWidth(420);
-        logTableView.setPrefHeight(180);
 
         TableColumn<LogData, String> timestampColumn = new TableColumn<>("Time");
         timestampColumn.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
+        timestampColumn.setPrefWidth(115);
 
         TableColumn<LogData, String> levelColumn = new TableColumn<>("Level");
         levelColumn.setCellValueFactory(new PropertyValueFactory<>("level"));
+        levelColumn.setPrefWidth(45);
 
         TableColumn<LogData, String> loggerColumn = new TableColumn<>("Logger");
         loggerColumn.setCellValueFactory(new PropertyValueFactory<>("logger"));
+        loggerColumn.prefWidthProperty().bind(logTableView.widthProperty().subtract(165).divide(2));
 
         TableColumn<LogData, String> messageColumn = new TableColumn<>("Message");
         messageColumn.setCellValueFactory(new PropertyValueFactory<>("message"));
+        messageColumn.prefWidthProperty().bind(logTableView.widthProperty().subtract(165).divide(2));
 
         logTableView.getColumns().addAll(timestampColumn, levelColumn, messageColumn, loggerColumn);
 
@@ -416,7 +446,8 @@ public class MainApp extends Components {
         appender.setOnLogUpdate(logTableView::refresh);
 
         //Set config in stage
-        stage.setResizable(false);
+        stage.setResizable(true);
+        stage.setMinWidth(360);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
         Scene scene = new Scene(root, 345, permission.getCreate() ? 480 : permission.getRead() ? 350 : 260);
         stage.setScene(scene);
@@ -465,10 +496,10 @@ public class MainApp extends Components {
         LocalDateTime futureDateTime = currentDateTime.plusYears(10);
         String endTime = futureDateTime.format(formatter) + "23:59:59";
 
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
         DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT");
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (setUserInfoRes.getContentType().startsWith("Request failed")) {
             logger.error("UserInfo SetUp Error: " + setUserInfoRes.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
@@ -480,10 +511,10 @@ public class MainApp extends Components {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") + "\"}");
         }
 
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + employeeNo + "\"\n" + "}";
         DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (checkFaceExist.getContentType().startsWith("Request failed")) {
             logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
@@ -525,9 +556,9 @@ public class MainApp extends Components {
         }
         formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
 
-        showLoading(stage, true);
+//        showLoading(stage, true);
         DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
             logger.error("FDLib FaceDataRecord Error: " + saveUserFaceRes.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
@@ -554,9 +585,9 @@ public class MainApp extends Components {
         } else {
             personId = empHolder.getEmployee().getEmpId();
         }
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String checkEmpDicRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic?deviceid=" + deviceId + "&personid=" + personId, "GET", "application/json", "", true);
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (checkEmpDicRes.startsWith("Request failed")) {
             logger.error("Get device employees error: " + checkEmpDicRes);
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkEmpDicRes + "\"}");
@@ -577,10 +608,10 @@ public class MainApp extends Components {
         } else {
             photoBase64 = ImplFunctions.functions.convertImageToBase64(data + ".jpg");
         }
-        showLoading(stage, true);
+//        showLoading(stage, true);
         String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceId + "\", \"personid\": \"" + personId + "\", \"empid\": \"" + personId + "\", \"photo\": \"" + photoBase64 + "\"}";
         String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
-        showLoading(stage, false);
+//        showLoading(stage, false);
         if (storeDevEmpRes.startsWith("Request failed")) {
             logger.error("When insert device employee data, occurred error: " + storeDevEmpRes);
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes + "\"}");
@@ -691,9 +722,9 @@ public class MainApp extends Components {
         return true;
     }
 
-    public static void showLoading(Stage stage, Boolean loading) {
-        getSpinningLoader(stage, loading);
-    }
+//    public static void showLoading(Stage stage, Boolean loading) {
+//        getSpinningLoader(stage, loading);
+//    }
 
     @Override
     public void draw() {

@@ -11,6 +11,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Comparator;
+
 /**
  * @author Bagaa
  * @project hikvision-brige
@@ -129,6 +131,7 @@ public class Device {
                     list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial")));
                 }
             }
+            list.sort(Comparator.comparing(Device::getName));
         } catch (JSONException e) {
             e.printStackTrace();
             logger.error("Response cannot convert to json array.");

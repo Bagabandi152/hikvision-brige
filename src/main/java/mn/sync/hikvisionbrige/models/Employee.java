@@ -10,6 +10,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Comparator;
+
 /**
  * @author Bagaa
  * @project hikvision-brige
@@ -75,6 +77,7 @@ public class Employee {
                 Employee newEmployee = new Employee(jsonObject.getInt("empid"), jsonObject.getInt("instid"), jsonObject.getString("empfname"), jsonObject.getString("emplname"), jsonObject.getString("emplnameabr"), jsonObject.getString("empfnameeng"), jsonObject.getString("emplnameeng"), jsonObject.getString("emplnameabreng"), jsonObject.getString("endusername"), jsonObject.getString("enduserengname"), !jsonObject.isNull("prflno") ? jsonObject.getString("prflno") : "", jsonObject.getInt("gender") == 1 ? "male" : jsonObject.getInt("gender") == 2 ? "female" : "unknown");
                 list.add(newEmployee);
             }
+            list.sort(Comparator.comparing(Employee::getEmpFirstNameEng));
         } catch (JSONException e) {
             logger.error("Response cannot convert to json array.");
             e.printStackTrace();

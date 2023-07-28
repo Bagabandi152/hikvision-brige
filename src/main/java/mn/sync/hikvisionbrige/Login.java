@@ -102,15 +102,15 @@ public class Login extends Application {
             }
 
             // Perform login validation here
-            MainApp.showLoading(primaryStage, true);
+//            MainApp.showLoading(primaryStage, true);
             JSONObject step1Object = validateLogin(userName, password, null, 1, null, "");
-            MainApp.showLoading(primaryStage, false);
+//            MainApp.showLoading(primaryStage, false);
             try {
                 assert step1Object != null;
                 if ("enterPassword".equals(step1Object.getString("responsecode"))) {
-                    MainApp.showLoading(primaryStage, true);
+//                    MainApp.showLoading(primaryStage, true);
                     JSONObject step2Object = validateLogin(userName, password, null, 2, step1Object.getString("steptoken"), "");
-                    MainApp.showLoading(primaryStage, false);
+//                    MainApp.showLoading(primaryStage, false);
                     assert step2Object != null;
                     if (step2Object.getString("responsecode").equals("chooseInst")) {
                         logger.warn("Choose institution.");
@@ -128,9 +128,9 @@ public class Login extends Application {
                             if (newValue.length() == 6) {
                                 JSONObject step4Object;
                                 try {
-                                    MainApp.showLoading(primaryStage, true);
+//                                    MainApp.showLoading(primaryStage, true);
                                     step4Object = validateLogin(userName, password, null, 4, step2Object.getString("steptoken"), newValue);
-                                    MainApp.showLoading(primaryStage, false);
+//                                    MainApp.showLoading(primaryStage, false);
                                     assert step4Object != null;
                                     if (step4Object.getString("responsecode").equals("chooseInst")) {
                                         logger.warn("Choose institution.");
@@ -194,9 +194,9 @@ public class Login extends Application {
             comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
                 InstHolder.getInstance().setInst(newValue);
                 try {
-                    MainApp.showLoading(stage, true);
+//                    MainApp.showLoading(stage, true);
                     JSONObject step3Object = validateLogin(userName, password, newValue.getInstId(), 3, stepObject.getString("steptoken"), "");
-                    MainApp.showLoading(stage, false);
+//                    MainApp.showLoading(stage, false);
                     assert step3Object != null;
                     if (step3Object.getString("responsecode").equals("success")) {
                         logger.info("Login success.");
@@ -227,6 +227,8 @@ public class Login extends Application {
         alert.setTitle("Login Successful");
         alert.setHeaderText(null);
         alert.setContentText("Hello, " + username + ".\nWelcome to face recognition terminal.");
+        Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/favicon.png")));
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isEmpty()) {
             System.out.println("Alert is exited, no button has been pressed.\n");
@@ -241,6 +243,8 @@ public class Login extends Application {
         alert.setTitle("Login Error");
         alert.setHeaderText(null);
         alert.setContentText("Invalid username or password. Please try again. (" + responseCode + ")");
+        Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/favicon.png")));
         alert.showAndWait();
     }
 

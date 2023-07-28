@@ -3,6 +3,8 @@ package mn.sync.hikvisionbrige.constants;
 import com.burgstaller.okhttp.digest.Credentials;
 import com.burgstaller.okhttp.digest.DigestAuthenticator;
 import javafx.scene.control.Alert;
+import javafx.scene.image.Image;
+import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
 import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
@@ -169,6 +171,8 @@ public class ImplFunctions {
             alert.setTitle(title);
             alert.setHeaderText(headerText);
             alert.setContentText(msg);
+            Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+            alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/favicon.png")));
             alert.show();
         }
 
