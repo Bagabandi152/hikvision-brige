@@ -675,18 +675,17 @@ public class MainApp extends Components {
             JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject);
             if (frtSentStatus.getString("code").startsWith("success")) {
                 JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject);
-                if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image"))) {
+                if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").startsWith("Employee is already existed."))) {
                     response.put("valid", true);
                     response.put("info", "Success.");
                     logger.info("Successfully sent employee data to ERP.");
-                    return response;
                 } else {
                     response.put("valid", false);
                     response.put("info", erpSentStatus.getString("msg"));
                     logger.error(erpSentStatus.getString("msg"));
-                    return response;
                 }
-            } else if (frtSentStatus.getString("code").startsWith("error") && frtSentStatus.getString("msg").startsWith("Not found image")) {
+                return response;
+            } else if ((frtSentStatus.getString("code").startsWith("error") && frtSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").startsWith("Face data is already existed."))) {
                 response.put("valid", true);
                 response.put("info", "Success.");
                 logger.info("Successfully sent employee data to FRT.");
