@@ -6,6 +6,7 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -133,12 +134,32 @@ public class MainApp extends Components {
         flowPane.getChildren().add(comboLabel);
         flowPane.getChildren().add(comboBox);
 
+        VBox vBox = new VBox();
+        vBox.setSpacing(10);
+
         FlowPane empFlowPane = new FlowPane();
         empFlowPane.setHgap(5);
         Label empComboLabel = new Label("Select a employee:");
         empComboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
         empFlowPane.getChildren().add(empComboLabel);
         empFlowPane.getChildren().add(empComboBox);
+        vBox.getChildren().add(empFlowPane);
+
+        FlowPane empCardFlowPane = new FlowPane();
+        empCardFlowPane.setHgap(5);
+        Label empCardLabel = new Label("Input card number:");
+        empCardLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+
+        TextField empCardTF = new TextField();
+        empCardTF.setPrefWidth(295);
+        empCardTF.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.isEmpty()) {
+                empCardTF.setStyle("-fx-border-color: none;");
+            }
+        });
+        empCardFlowPane.getChildren().add(empCardLabel);
+        empCardFlowPane.getChildren().add(empCardTF);
+        vBox.getChildren().add(empCardFlowPane);
 
         //Create Separators
         Separator sepTop = new Separator();
@@ -150,7 +171,7 @@ public class MainApp extends Components {
         HBox hBoxBtnTop = new HBox();
         hBoxBtnTop.setSpacing(10);
         HBox hBoxBtnDown = new HBox();
-        hBoxBtnTop.setSpacing(10);
+        hBoxBtnDown.setSpacing(10);
 
         //Create Button to sync data
         Button syncBtn = new Button("Sync time data");
@@ -308,8 +329,8 @@ public class MainApp extends Components {
         hBoxBtnTop.getChildren().add(syncEmpData);
 
         //Create Button to add new data
-        Button newBtn = new Button("Add new employee");
-        EventHandler<ActionEvent> addEmpEvent = e -> {
+        Button newFaceBtn = new Button("Add face data");
+        EventHandler<ActionEvent> addEmpFaceEvent = e -> {
             if (BASE_URL.isEmpty()) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
                 logger.warn("Device field is required.");
@@ -381,11 +402,35 @@ public class MainApp extends Components {
                     ex.printStackTrace();
                 }
 
-                sendUserData(stage, fileName, root);
+                sendUserData(stage, fileName, "", root);
             }
         };
-        newBtn.setOnAction(addEmpEvent);
-        hBoxBtnDown.getChildren().add(newBtn);
+        newFaceBtn.setOnAction(addEmpFaceEvent);
+        hBoxBtnDown.getChildren().add(newFaceBtn);
+
+        Button newCardBtn = new Button("Add card");
+        EventHandler<ActionEvent> addEmpCardEvent = e -> {
+            if (BASE_URL.isEmpty()) {
+                comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
+                return;
+            }
+
+            if (empHolder.getEmployee() == null) {
+                empComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Employee field is required.");
+                return;
+            }
+
+            if (empCardTF.getText().isEmpty() || empCardTF.getText().isBlank()) {
+                empCardTF.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Card number field is required.");
+                return;
+            }
+            sendUserData(stage, "", empCardTF.getText(), root);
+        };
+        newCardBtn.setOnAction(addEmpCardEvent);
+        hBoxBtnDown.getChildren().add(newCardBtn);
 
         logTableView = new TableView<>();
 
@@ -414,7 +459,7 @@ public class MainApp extends Components {
             root.getChildren().add(sepTop);
             root.getChildren().add(hBoxBtnTop);
             root.getChildren().add(getSeparatorWithLabel("Employee section"));
-            root.getChildren().add(empFlowPane);
+            root.getChildren().add(vBox);
             root.getChildren().add(sepDown);
             root.getChildren().add(hBoxBtnDown);
         } else if (permission.getRead()) {
@@ -471,7 +516,7 @@ public class MainApp extends Components {
         return newPerm;
     }
 
-    public static JSONObject sendEmpDataFaceRecogTerm(Stage stage, Object data) {
+    public static JSONObject sendEmpDataFaceRecogTerm(Stage stage, Object data, String cardNo) {
         Integer employeeNo;
         String empName;
         String gender;
@@ -505,76 +550,118 @@ public class MainApp extends Components {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
         }
 
-        JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
-        if (!setUserInfoResObj.getString("statusString").equals("OK")) {
-            logger.error(setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode"));
-            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") + "\"}");
-        }
+        if ((data instanceof String && !data.toString().isEmpty()) || data instanceof JSONObject) {
+
+            JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
+            if (!setUserInfoResObj.getString("statusString").equals("OK")) {
+                logger.error(setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode"));
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + setUserInfoResObj.getString("statusString") + ": " + setUserInfoResObj.getString("subStatusCode") + "\"}");
+            }
 
 //        showLoading(stage, true);
-        String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + employeeNo + "\"\n" + "}";
-        DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
+            String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + employeeNo + "\"\n" + "}";
+            DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
 //        showLoading(stage, false);
-        if (checkFaceExist.getContentType().startsWith("Request failed")) {
-            logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
-            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
-        }
-
-        JSONObject checkFaceResObj = new JSONObject(checkFaceExist.getBody().toString());
-        if (checkFaceResObj.getString("statusString").equals("OK")) {
-            if (checkFaceResObj.getString("responseStatusStrg").equals("OK")) {
-                logger.warn("Face data is already existed.");
-                return new JSONObject("{\"code\": \"warning\", \"msg\": \"Face data is already existed.\"}");
+            if (checkFaceExist.getContentType().startsWith("Request failed")) {
+                logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
             }
-        } else {
-            logger.error(checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"));
-            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode") + "\"}");
-        }
 
-        String faceDataRecord = "{\"faceLibType\":\"blackFD\",\"FDID\":\"1\",\"FPID\":\"" + employeeNo + "\"}";
-        MultipartBody.Builder formDataBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
-        formDataBuilder.addFormDataPart("FaceDataRecord", faceDataRecord);
-        String fileName;
-        byte[] photoBytes;
-        if (data instanceof JSONObject) {
-            fileName = "tmp/CaptureFaceData_" + employeeNo + "_" + System.currentTimeMillis() + "_" + ((int) (Math.random() * 99999) + 10000);
-            String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
-            if (empPhotoBase64.equalsIgnoreCase("unknown")) {
-                logger.warn(empName + "'s image not found!");
-                return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
+            JSONObject checkFaceResObj = new JSONObject(checkFaceExist.getBody().toString());
+            if (checkFaceResObj.getString("statusString").equals("OK")) {
+                if (checkFaceResObj.getString("responseStatusStrg").equals("OK")) {
+                    logger.warn("Face data is already existed.");
+                    return new JSONObject("{\"code\": \"warning\", \"msg\": \"Face data is already existed.\"}");
+                }
             } else {
-                photoBytes = Base64.getDecoder().decode(empPhotoBase64);
+                logger.error(checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"));
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode") + "\"}");
             }
-        } else {
-            fileName = String.valueOf(data);
-            try {
-                photoBytes = Files.readAllBytes(Path.of(fileName + ".jpg"));
-            } catch (IOException e) {
-                logger.error(fileName + ".jpg cannot read.");
-                throw new RuntimeException(e);
+
+            String faceDataRecord = "{\"faceLibType\":\"blackFD\",\"FDID\":\"1\",\"FPID\":\"" + employeeNo + "\"}";
+            MultipartBody.Builder formDataBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+            formDataBuilder.addFormDataPart("FaceDataRecord", faceDataRecord);
+            String fileName;
+            byte[] photoBytes = null;
+            if (data instanceof JSONObject) {
+                fileName = "tmp/CaptureFaceData_" + employeeNo + "_" + System.currentTimeMillis() + "_" + ((int) (Math.random() * 99999) + 10000);
+                String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
+                if (empPhotoBase64.equalsIgnoreCase("unknown")) {
+                    logger.warn(empName + "'s image not found!");
+//                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
+                } else {
+                    photoBytes = Base64.getDecoder().decode(empPhotoBase64);
+                }
+            } else {
+                fileName = String.valueOf(data);
+                try {
+                    photoBytes = Files.readAllBytes(Path.of(fileName + ".jpg"));
+                } catch (IOException e) {
+                    logger.error(fileName + ".jpg cannot read.");
+                    throw new RuntimeException(e);
+                }
+            }
+
+            if (photoBytes != null) {
+                formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
+
+//                showLoading(stage, true);
+                DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
+//                showLoading(stage, false);
+                if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
+                    logger.error("FDLib FaceDataRecord Error: " + saveUserFaceRes.getBody());
+                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
+                }
+
+                JSONObject saveUserFaceResObj = new JSONObject(saveUserFaceRes.getBody().toString());
+                if (!saveUserFaceResObj.getString("statusString").equals("OK")) {
+                    logger.error(saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode"));
+                    return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode") + "\"}");
+                }
             }
         }
-        formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
 
-//        showLoading(stage, true);
-        DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
-//        showLoading(stage, false);
-        if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
-            logger.error("FDLib FaceDataRecord Error: " + saveUserFaceRes.getBody());
-            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
-        }
+        if (!(cardNo.isEmpty() || cardNo.isBlank())) {
 
-        JSONObject saveUserFaceResObj = new JSONObject(saveUserFaceRes.getBody().toString());
-        if (!saveUserFaceResObj.getString("statusString").equals("OK")) {
-            logger.error(saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode"));
-            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode") + "\"}");
+            String checkCardReqBody = "{\n" + "  \"CardInfoSearchCond\":{\n" + "    \"searchID\":\"1\",\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"CardNoList\":[{\n" + "      \"cardNo\":\"" + cardNo + "\"\n" + "    }]\n" + "  }\n" + "}";
+            DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST");
+
+            if (checkCardExist.getContentType().startsWith("Request failed")) {
+                logger.error("CardInfo Search Error: " + checkCardExist.getBody());
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkCardExist.getBody() + "\"}");
+            }
+
+            JSONObject checkCardResObj = new JSONObject(checkCardExist.getBody().toString());
+            JSONObject jObjRes = checkCardResObj.getJSONObject("CardInfoSearch");
+            if (jObjRes != null) {
+                if (jObjRes.getString("responseStatusStrg").equals("OK")) {
+                    logger.warn("Card info is already existed.");
+                    return new JSONObject("{\"code\": \"warning\", \"msg\": \"Card info is already existed.\"}");
+                }
+            } else {
+                logger.error(checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode"));
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode") + "\"}");
+            }
+
+            String cardReqBody = "{\"CardInfo\":{\"employeeNo\":\"" + employeeNo + "\",\"cardNo\":\"" + cardNo + "\",\"cardType\":\"normalCard\"}}";
+            DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT");
+            if (saveUserCardRes.getContentType().startsWith("Request failed")) {
+                logger.error("CardInfo CardInfoRecord Error: " + saveUserCardRes.getBody());
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserCardRes.getBody() + "\"}");
+            }
+
+            JSONObject saveUserCardResObj = new JSONObject(saveUserCardRes.getBody().toString());
+            if (!saveUserCardResObj.getString("statusString").equals("OK")) {
+                logger.error(saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode"));
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode") + "\"}");
+            }
         }
 
         logger.info("Sent employee data to FRT.");
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
-    public static JSONObject sendEmpDataERP(Stage stage, Object data) {
+    public static JSONObject sendEmpDataERP(Stage stage, Object data, String cardNo) {
 
         Integer personId;
         JSONObject empPhoto = null;
@@ -595,21 +682,24 @@ public class MainApp extends Components {
         JSONArray jsonArray = new JSONArray(checkEmpDicRes);
         if (jsonArray.length() > 0) {
             logger.warn("Employee is already existed.");
-            return new JSONObject("{\"code\": \"warning\", \"msg\": \"Employee is already existed.\"}");
+//            return new JSONObject("{\"code\": \"warning\", \"msg\": \"Employee is already existed.\"}");
         }
 
-        String photoBase64;
-        if (data instanceof JSONObject) {
-            photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
-            if (photoBase64.equalsIgnoreCase("unknown")) {
-                logger.error("Not found image (" + empPhoto.getString("id") + ")");
-                return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
+        String photoBase64 = "";
+        if ((data instanceof String && !data.toString().isEmpty()) || data instanceof JSONObject) {
+            if (data instanceof JSONObject) {
+                photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
+                if (photoBase64.equalsIgnoreCase("unknown")) {
+                    logger.error("Not found image (" + empPhoto.getInt("id") + ")");
+//                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
+                }
+            } else {
+                photoBase64 = ImplFunctions.functions.convertImageToBase64(data + ".jpg");
             }
-        } else {
-            photoBase64 = ImplFunctions.functions.convertImageToBase64(data + ".jpg");
         }
+
 //        showLoading(stage, true);
-        String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceId + "\", \"personid\": \"" + personId + "\", \"empid\": \"" + personId + "\", \"photo\": \"" + photoBase64 + "\"}";
+        String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceId + "\", \"personid\": \"" + personId + "\", \"empid\": \"" + personId + "\", \"photo\": \"" + (photoBase64.equalsIgnoreCase("unknown") ? "" : photoBase64) + "\", \"cardno\": \"" + cardNo + "\"}";
         String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
 //        showLoading(stage, false);
         if (storeDevEmpRes.startsWith("Request failed")) {
@@ -621,13 +711,13 @@ public class MainApp extends Components {
         return new JSONObject("{\"code\": \"success\", \"msg\": \"\"}");
     }
 
-    public static void sendUserData(Stage stage, String fileName, VBox root) {
+    public static void sendUserData(Stage stage, String fileName, String cardNo, VBox root) {
 
-        JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, fileName);
+        JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, fileName, cardNo);
         if (frtSentStatus.getString("code").startsWith("success")) {
-            JSONObject erpSentStatus = sendEmpDataERP(stage, fileName);
+            JSONObject erpSentStatus = sendEmpDataERP(stage, fileName, cardNo);
             if (erpSentStatus.getString("code").startsWith("success")) {
-                ImplFunctions.functions.showAlert("Success", "", "Successfully added new employee.", Alert.AlertType.INFORMATION);
+                ImplFunctions.functions.showAlert("Success", "", "Successfully added.", Alert.AlertType.INFORMATION);
             } else if (erpSentStatus.getString("code").startsWith("warning")) {
                 ImplFunctions.functions.showAlert("Warning", "", erpSentStatus.getString("msg"), Alert.AlertType.INFORMATION);
             } else {
@@ -641,11 +731,13 @@ public class MainApp extends Components {
             }
         }
 
-        try {
-            Files.delete(Path.of(fileName + ".jpg"));
-        } catch (IOException e) {
-            logger.error(fileName + ".jpg file cannot delete.");
-            e.printStackTrace();
+        if (!fileName.isEmpty()) {
+            try {
+                Files.delete(Path.of(fileName + ".jpg"));
+            } catch (IOException e) {
+                logger.error(fileName + ".jpg file cannot delete.");
+                e.printStackTrace();
+            }
         }
     }
 
@@ -672,10 +764,11 @@ public class MainApp extends Components {
             logger.error("When delete face data from Face Recognition Terminal, occurred error.");
             return response;
         } else {
-            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject);
+            JSONObject empPhoto = jsonObject.getJSONObject("empphoto");
+            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
             if (frtSentStatus.getString("code").startsWith("success")) {
-                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject);
-                if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").startsWith("Employee is already existed."))) {
+                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
+                if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {
                     response.put("valid", true);
                     response.put("info", "Success.");
                     logger.info("Successfully sent employee data to ERP.");
@@ -685,7 +778,7 @@ public class MainApp extends Components {
                     logger.error(erpSentStatus.getString("msg"));
                 }
                 return response;
-            } else if ((frtSentStatus.getString("code").startsWith("error") && frtSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").startsWith("Face data is already existed."))) {
+            } else if ((frtSentStatus.getString("code").startsWith("error") && frtSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {
                 response.put("valid", true);
                 response.put("info", "Success.");
                 logger.info("Successfully sent employee data to FRT.");
