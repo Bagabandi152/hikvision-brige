@@ -3,7 +3,10 @@ package mn.sync.hikvisionbrige;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.image.Image;
+import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
@@ -15,6 +18,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 
 import java.util.Optional;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
@@ -40,6 +45,7 @@ import org.apache.logging.log4j.LogManager;
 public class Login extends Application {
     private TextField usernameTextField;
     private PasswordField passwordField;
+    public Preferences pref = Preferences.userRoot().node("remme");
 
     public static void main(String[] args) {
         launch(args);
@@ -60,6 +66,7 @@ public class Login extends Application {
         // Add Username label and TextField
         Label usernameLabel = new Label("Email:");
         usernameTextField = new TextField();
+        usernameTextField.setText(pref.get("username", null));
         usernameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (!newValue.isEmpty()) {
                 usernameTextField.setStyle("-fx-border-color: none;");
@@ -71,6 +78,7 @@ public class Login extends Application {
         // Add Password label and PasswordField
         Label passwordLabel = new Label("Password:");
         passwordField = new PasswordField();
+        passwordField.setText(pref.get("password", null));
         passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (!newValue.isEmpty()) {
                 passwordField.setStyle("-fx-border-color: none;");
@@ -79,9 +87,38 @@ public class Login extends Application {
         gridPane.add(passwordLabel, 0, 1);
         gridPane.add(passwordField, 1, 1);
 
-        //Login form set default values
-//        usernameTextField.setText("Bagabandi@sync.mn");
-//        passwordField.setText("Bagaa010520");
+
+        //Create checkbox to remember username and password
+        HBox hBox = new HBox();
+        hBox.setSpacing(10);
+        Label remMeLabel = new Label("Remember me");
+        CheckBox remMeCheckBox = new CheckBox();
+        remMeCheckBox.setSelected(pref.get("username", null) != null && !pref.get("username", null).isEmpty() && pref.get("username", null) != null && !pref.get("username", null).isEmpty());
+        EventHandler handleRememberUser = new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                if (remMeCheckBox.isSelected()) {
+                    if (!usernameTextField.getText().isEmpty()) {
+                        String username = usernameTextField.getText();
+                        pref.put("username", username);
+                    }
+
+                    if (!passwordField.getText().isEmpty()) {
+                        String password = passwordField.getText();
+                        pref.put("password", password);
+                    }
+                } else {
+                    try {
+                        pref.clear();
+                    } catch (BackingStoreException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+        remMeCheckBox.setOnAction(handleRememberUser);
+        hBox.getChildren().addAll(remMeCheckBox, remMeLabel);
+        gridPane.add(hBox, 1, 2);
 
         // Add Login button
         Button loginButton = new Button("Login");
@@ -160,7 +197,7 @@ public class Login extends Application {
                 logger.error("User not found!");
             }
         });
-        gridPane.add(loginButton, 1, 2);
+        gridPane.add(loginButton, 1, 3);
 
         // Create the Scene and set it on the Stage
         Scene scene = new Scene(gridPane, 300, 150);

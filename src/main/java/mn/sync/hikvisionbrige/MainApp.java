@@ -6,7 +6,6 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -227,38 +226,7 @@ public class MainApp extends Components {
             System.out.println("startDate: " + startDate);
             System.out.println("endDate: " + endDate);
 
-            String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":0,\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-//            showLoading(stage, true);
-            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
-//            showLoading(stage, false);
-            if (responseBody.getContentType().startsWith("Request failed")) {
-                logger.error("AcsEvent error: " + requestBody);
-                ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
-                return;
-            }
-
-            JSONArray sentArray = new JSONArray();
-            try {
-                JSONObject acsEvent = new JSONObject(responseBody.getBody().toString()).getJSONObject("AcsEvent");
-                if (acsEvent.has("InfoList")) {
-                    JSONArray responseJson = new JSONObject(responseBody.getBody().toString()).getJSONObject("AcsEvent").getJSONArray("InfoList");
-                    for (int i = 0; i < responseJson.length(); i++) {
-                        JSONObject jo = responseJson.getJSONObject(i);
-                        JSONObject mapJo = new JSONObject();
-                        mapJo.put("personid", jo.getInt("employeeNoString"));
-                        OffsetDateTime offsetDateTime = OffsetDateTime.parse(jo.getString("time"));
-                        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                        mapJo.put("time", offsetDateTime.format(dateFormat));
-                        sentArray.put(mapJo);
-                    }
-                    logger.info("AcsEvent response is successfully converted.");
-                } else {
-                    logger.warn("AcsEvent response hasn't attribute InfoList");
-                }
-            } catch (JSONException ex) {
-                logger.error("When convert AcsEvent response to json, occurred error.");
-                ex.printStackTrace();
-            }
+            JSONArray sentArray = getAcsEvents(startDate, endDate);
 
 //            showLoading(stage, true);
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
@@ -817,6 +785,50 @@ public class MainApp extends Components {
 //    public static void showLoading(Stage stage, Boolean loading) {
 //        getSpinningLoader(stage, loading);
 //    }
+
+    public static JSONArray getAcsEvents(String startDate, String endDate) {
+        JSONArray sentArray = new JSONArray();
+
+        int searchResultPosition = 0;
+        String resultStatus = "MORE";
+        while (!resultStatus.equals("OK")) {
+            String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":" + searchResultPosition + ",\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
+//            showLoading(stage, true);
+            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
+//            showLoading(stage, false);
+            if (responseBody.getContentType().startsWith("Request failed")) {
+                logger.error("AcsEvent error: " + requestBody);
+                ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
+                return null;
+            }
+
+            try {
+                JSONObject acsEvent = new JSONObject(responseBody.getBody().toString()).getJSONObject("AcsEvent");
+                if (acsEvent.has("InfoList")) {
+                    JSONArray responseJson = new JSONObject(responseBody.getBody().toString()).getJSONObject("AcsEvent").getJSONArray("InfoList");
+                    for (int i = 0; i < responseJson.length(); i++) {
+                        JSONObject jo = responseJson.getJSONObject(i);
+                        JSONObject mapJo = new JSONObject();
+                        mapJo.put("personid", jo.getInt("employeeNoString"));
+                        OffsetDateTime offsetDateTime = OffsetDateTime.parse(jo.getString("time"));
+                        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        mapJo.put("time", offsetDateTime.format(dateFormat));
+                        sentArray.put(mapJo);
+                    }
+                    searchResultPosition += acsEvent.getInt("numOfMatches");
+                    resultStatus = acsEvent.getString("responseStatusStrg");
+                    logger.info("AcsEvent response is successfully converted.");
+                } else {
+                    logger.warn("AcsEvent response hasn't attribute InfoList");
+                }
+            } catch (JSONException ex) {
+                logger.error("When convert AcsEvent response to json, occurred error.");
+                ex.printStackTrace();
+            }
+        }
+
+        return sentArray;
+    }
 
     @Override
     public void draw() {
