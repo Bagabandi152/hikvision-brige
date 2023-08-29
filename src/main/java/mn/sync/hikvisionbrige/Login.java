@@ -227,6 +227,7 @@ public class Login extends Application {
                 observableList.add(new InstShortInfo(inst.getInt("instid"), inst.getString("regno"), inst.getString("instnameshort"), inst.getString("instnameshorteng"), inst.getString("instname"), inst.getString("instnameeng")));
             }
             comboBox.setItems(observableList);
+            InstShortInfo.setInstList(observableList);
             comboBox.setPromptText("Select . . .");
             comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
                 InstHolder.getInstance().setInst(newValue);

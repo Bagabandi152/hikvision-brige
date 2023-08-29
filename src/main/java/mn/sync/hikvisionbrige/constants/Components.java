@@ -11,8 +11,13 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import mn.sync.hikvisionbrige.appender.LogTableViewAppender;
 import mn.sync.hikvisionbrige.holders.LoadingHolder;
 import mn.sync.hikvisionbrige.models.Loader;
+import mn.sync.hikvisionbrige.models.LogData;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -22,6 +27,42 @@ import java.util.List;
 public abstract class Components {
 
     public abstract void draw();
+
+    public static TableView<LogData> getLogTableView() {
+        TableView<LogData> logTableView = new TableView<>();
+
+        TableColumn<LogData, String> timestampColumn = new TableColumn<>("Time");
+        timestampColumn.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
+        timestampColumn.setPrefWidth(115);
+
+        TableColumn<LogData, String> levelColumn = new TableColumn<>("Level");
+        levelColumn.setCellValueFactory(new PropertyValueFactory<>("level"));
+        levelColumn.setPrefWidth(45);
+
+        TableColumn<LogData, String> loggerColumn = new TableColumn<>("Logger");
+        loggerColumn.setCellValueFactory(new PropertyValueFactory<>("logger"));
+        loggerColumn.prefWidthProperty().bind(logTableView.widthProperty().subtract(165).divide(2));
+
+        TableColumn<LogData, String> messageColumn = new TableColumn<>("Message");
+        messageColumn.setCellValueFactory(new PropertyValueFactory<>("message"));
+        messageColumn.prefWidthProperty().bind(logTableView.widthProperty().subtract(165).divide(2));
+
+        logTableView.getColumns().addAll(timestampColumn, levelColumn, messageColumn, loggerColumn);
+
+        // Initialize Log4j2 and set up a custom appender to add log messages to the TableView
+        LogTableViewAppender appender = new LogTableViewAppender(logTableView);
+        appender.start();
+
+        // Add the appender to Log4j2's root logger
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        Configuration config = context.getConfiguration();
+        config.getRootLogger().addAppender(appender, null, null);
+
+        // Update the TableView whenever new log messages are received
+        appender.setOnLogUpdate(logTableView::refresh);
+
+        return logTableView;
+    }
 
     public static HBox getSeparatorWithLabel(String text) {
         // Create a label

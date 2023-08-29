@@ -1,5 +1,12 @@
 package mn.sync.hikvisionbrige.models;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Comparator;
+
 /**
  * @author Bagaa
  * @project hikvision-brige
@@ -14,6 +21,7 @@ public class InstShortInfo {
     String instShortNameEng;
     String instName;
     String instEngName;
+    static ObservableList<InstShortInfo> instList;
 
     public InstShortInfo(Integer instId, String regNo, String instShortName, String instShortNameEng, String instName, String instEngName) {
         this.instId = instId;
@@ -22,6 +30,15 @@ public class InstShortInfo {
         this.instShortNameEng = instShortNameEng;
         this.instName = instName;
         this.instEngName = instEngName;
+    }
+
+    public static void setInstList(ObservableList<InstShortInfo> observableList) {
+        observableList.sort(Comparator.comparing(InstShortInfo::getInstName));
+        instList = observableList;
+    }
+
+    public static ObservableList<InstShortInfo> getInstList() {
+        return instList;
     }
 
     /**

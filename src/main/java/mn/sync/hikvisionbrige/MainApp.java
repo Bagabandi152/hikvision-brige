@@ -6,7 +6,6 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -16,7 +15,6 @@ import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import mn.sync.hikvisionbrige.appender.LogTableViewAppender;
 import mn.sync.hikvisionbrige.constants.Components;
 import mn.sync.hikvisionbrige.constants.FxUtils;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
@@ -27,8 +25,6 @@ import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,7 +44,7 @@ public class MainApp extends Components {
     private static final UserHolder userHolder = UserHolder.getInstance();
     private static final InstHolder instHolder = InstHolder.getInstance();
     private static final EmpHolder empHolder = EmpHolder.getInstance();
-    private static TableView<LogData> logTableView;
+    private static TableView<LogData> logTableView = null;
     private static Logger logger = LogManager.getLogger(MainApp.class);
 
     public static void start(Stage stage) {
@@ -60,22 +56,31 @@ public class MainApp extends Components {
         root.setSpacing(10);
         root.setPadding(new Insets(15, 25, 10, 25));
 
-        //Create tableView columns data
-        JSONArray tabCols = new JSONArray();
-        String[][] tabColsData = {{"Timestamp", "Level", "Logger", "Message"}, {"timestamp", "level", "logger", "message"}};
-        for (int i = 0; i < 4; i++) {
-            JSONObject jsonObject = new JSONObject();
-            for (int j = 0; j < 2; j++) {
-                if (j == 0) {
-                    jsonObject.put("name", tabColsData[j][i]);
-                } else {
-                    jsonObject.put("key", tabColsData[j][i]);
-                }
-            }
-            tabCols.put(jsonObject);
-        }
-
         //Create ComboBox
+        ComboBox<InstShortInfo> instComboBox = new ComboBox<>();
+        instComboBox.setItems(InstShortInfo.getInstList());
+        instComboBox.setPromptText("Select . . .");
+        instComboBox.setMaxWidth(295);
+        instComboBox.getStylesheets().add("CustomComboBox.css");
+        instComboBox.setValue(instHolder.getInst());
+        instComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            instComboBox.setStyle("-fx-border-color: none;");
+            instHolder.setInst(newValue);
+        });
+        FxUtils.autoCompleteComboBoxPlus(instComboBox, (typedText, itemToCompare) -> itemToCompare.getInstName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getInstEngName().equals(typedText));
+        instComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(InstShortInfo object) {
+                return object != null ? object.getInstName() : "";
+            }
+
+            @Override
+            public InstShortInfo fromString(String string) {
+                return instComboBox.getItems().stream().filter(object -> object.getInstName().equals(string)).findFirst().orElse(null);
+            }
+
+        });
+
         ComboBox<Device> comboBox = new ComboBox<>();
         comboBox.setItems(Device.getDeviceList());
         comboBox.setPromptText("Select . . .");
@@ -126,6 +131,13 @@ public class MainApp extends Components {
         });
 
         //Create FlowPane, then add ComboBox
+        FlowPane instFlowPane = new FlowPane();
+        instFlowPane.setHgap(5);
+        Label instComboLabel = new Label("Select a institution:");
+        instComboLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+        instFlowPane.getChildren().add(instComboLabel);
+        instFlowPane.getChildren().add(instComboBox);
+
         FlowPane flowPane = new FlowPane();
         flowPane.setHgap(5);
         Label comboLabel = new Label("Select a device:");
@@ -161,16 +173,48 @@ public class MainApp extends Components {
         vBox.getChildren().add(empCardFlowPane);
 
         //Create Separators
+        Separator instSep = new Separator();
+        instSep.setHalignment(HPos.CENTER);
         Separator sepTop = new Separator();
         sepTop.setHalignment(HPos.CENTER);
         Separator sepDown = new Separator();
         sepDown.setHalignment(HPos.CENTER);
 
         //Create HBox, then add Buttons
+        HBox instBtn = new HBox();
+        instBtn.setSpacing(10);
         HBox hBoxBtnTop = new HBox();
         hBoxBtnTop.setSpacing(10);
         HBox hBoxBtnDown = new HBox();
         hBoxBtnDown.setSpacing(10);
+
+        //Create Button to change institution
+        Button changeBtn = new Button("Change");
+        EventHandler<ActionEvent> changeInst = e -> {
+            if (instHolder.getInst() == null) {
+                instComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Institution field is required.");
+                return;
+            }
+
+            //showLoading(stage, true);
+            String response = ImplFunctions.functions.ErpApiService("/auth/changeinst", "POST", "application/json", "{\"instid\":" + instHolder.getInst().getInstId() + "}", true);
+            //showLoading(stage, false);
+            if (response.startsWith("Request failed")) {
+                logger.error("When change institution, occurred error: " + response);
+                ImplFunctions.functions.showAlert("Error", "", response, Alert.AlertType.ERROR);
+                return;
+            }
+
+            if (response.equals("\"success\"")) {
+                logger.info("Successfully changed institution.");
+//                stage.close();
+                MainApp.start(stage);
+            }
+
+        };
+        changeBtn.setOnAction(changeInst);
+        instBtn.getChildren().add(changeBtn);
 
         //Create Button to sync data
         Button syncBtn = new Button("Sync time data");
@@ -400,28 +444,12 @@ public class MainApp extends Components {
         newCardBtn.setOnAction(addEmpCardEvent);
         hBoxBtnDown.getChildren().add(newCardBtn);
 
-        logTableView = new TableView<>();
-
-        TableColumn<LogData, String> timestampColumn = new TableColumn<>("Time");
-        timestampColumn.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
-        timestampColumn.setPrefWidth(115);
-
-        TableColumn<LogData, String> levelColumn = new TableColumn<>("Level");
-        levelColumn.setCellValueFactory(new PropertyValueFactory<>("level"));
-        levelColumn.setPrefWidth(45);
-
-        TableColumn<LogData, String> loggerColumn = new TableColumn<>("Logger");
-        loggerColumn.setCellValueFactory(new PropertyValueFactory<>("logger"));
-        loggerColumn.prefWidthProperty().bind(logTableView.widthProperty().subtract(165).divide(2));
-
-        TableColumn<LogData, String> messageColumn = new TableColumn<>("Message");
-        messageColumn.setCellValueFactory(new PropertyValueFactory<>("message"));
-        messageColumn.prefWidthProperty().bind(logTableView.widthProperty().subtract(165).divide(2));
-
-        logTableView.getColumns().addAll(timestampColumn, levelColumn, messageColumn, loggerColumn);
-
         //Add children to root
         if (permission.getCreate()) {
+            root.getChildren().add(getSeparatorWithLabel("Institution"));
+            root.getChildren().add(instFlowPane);
+            root.getChildren().add(instSep);
+            root.getChildren().add(instBtn);
             root.getChildren().add(getSeparatorWithLabel("Device section"));
             root.getChildren().add(flowPane);
             root.getChildren().add(sepTop);
@@ -431,6 +459,10 @@ public class MainApp extends Components {
             root.getChildren().add(sepDown);
             root.getChildren().add(hBoxBtnDown);
         } else if (permission.getRead()) {
+            root.getChildren().add(getSeparatorWithLabel("Institution"));
+            root.getChildren().add(instFlowPane);
+            root.getChildren().add(instSep);
+            root.getChildren().add(instBtn);
             root.getChildren().add(getSeparatorWithLabel("Device section"));
             root.getChildren().add(flowPane);
             root.getChildren().add(sepTop);
@@ -444,25 +476,14 @@ public class MainApp extends Components {
             contain.getChildren().add(permDenied);
             root.getChildren().add(contain);
         }
+        logTableView = logTableView == null ? Components.getLogTableView() : logTableView;
         root.getChildren().add(logTableView);
-
-        // Initialize Log4j2 and set up a custom appender to add log messages to the TableView
-        LogTableViewAppender appender = new LogTableViewAppender(logTableView);
-        appender.start();
-
-        // Add the appender to Log4j2's root logger
-        LoggerContext context = (LoggerContext) LogManager.getContext(false);
-        Configuration config = context.getConfiguration();
-        config.getRootLogger().addAppender(appender, null, null);
-
-        // Update the TableView whenever new log messages are received
-        appender.setOnLogUpdate(logTableView::refresh);
 
         //Set config in stage
         stage.setResizable(true);
         stage.setMinWidth(360);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
-        Scene scene = new Scene(root, 345, permission.getCreate() ? 480 : permission.getRead() ? 350 : 260);
+        Scene scene = new Scene(root, 345, permission.getCreate() ? 630 : permission.getRead() ? 500 : 260);
         stage.setScene(scene);
         stage.show();
 
