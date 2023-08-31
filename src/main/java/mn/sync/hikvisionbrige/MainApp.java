@@ -219,7 +219,7 @@ public class MainApp extends Components {
         //Create Button to sync data
         Button syncBtn = new Button("Sync time data");
         EventHandler<ActionEvent> syncEvent = e -> {
-            if (BASE_URL.isEmpty()) {
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
                 logger.warn("Device field is required.");
                 return;
@@ -298,7 +298,7 @@ public class MainApp extends Components {
         //Create Button to sync employee data
         Button syncEmpData = new Button("Sync employee data");
         EventHandler syncEmpDataEvent = e -> {
-            if (BASE_URL.isEmpty()) {
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
                 logger.warn("Device field is required.");
                 return;
@@ -343,7 +343,7 @@ public class MainApp extends Components {
         //Create Button to add new data
         Button newFaceBtn = new Button("Add face data");
         EventHandler<ActionEvent> addEmpFaceEvent = e -> {
-            if (BASE_URL.isEmpty()) {
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
                 logger.warn("Device field is required.");
                 return;
@@ -422,7 +422,7 @@ public class MainApp extends Components {
 
         Button newCardBtn = new Button("Add card");
         EventHandler<ActionEvent> addEmpCardEvent = e -> {
-            if (BASE_URL.isEmpty()) {
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
                 logger.warn("Device field is required.");
                 return;
@@ -514,7 +514,7 @@ public class MainApp extends Components {
         if (data instanceof JSONObject) {
             employeeNo = ((JSONObject) data).getInt("empid");
             employee = ((JSONObject) data).getJSONObject("employee");
-            empPhoto = ((JSONObject) data).getJSONObject("empphoto");
+            empPhoto = ((JSONObject) data).isNull("empphoto") ? null : ((JSONObject) data).getJSONObject("empphoto");
             empName = employee.getString("empfnameeng").toUpperCase() + " " + employee.getString("emplnameeng");
             gender = employee.getInt("gender") == 1 ? "male" : employee.getInt("gender") == 2 ? "female" : "unknown";
         } else {
@@ -574,7 +574,7 @@ public class MainApp extends Components {
             byte[] photoBytes = null;
             if (data instanceof JSONObject) {
                 fileName = "tmp/CaptureFaceData_" + employeeNo + "_" + System.currentTimeMillis() + "_" + ((int) (Math.random() * 99999) + 10000);
-                String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
+                String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + (empPhoto == null ? -1 : empPhoto.getInt("id")) + "}", true);
                 if (empPhotoBase64.equalsIgnoreCase("unknown")) {
                     logger.warn(empName + "'s image not found!");
 //                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
@@ -657,7 +657,7 @@ public class MainApp extends Components {
         Integer deviceId = deviceHolder.getDevice().getId();
         if (data instanceof JSONObject) {
             personId = ((JSONObject) data).getInt("empid");
-            empPhoto = ((JSONObject) data).getJSONObject("empphoto");
+            empPhoto = ((JSONObject) data).isNull("empphoto") ? null : ((JSONObject) data).getJSONObject("empphoto");
         } else {
             personId = empHolder.getEmployee().getEmpId();
         }
@@ -677,9 +677,9 @@ public class MainApp extends Components {
         String photoBase64 = "";
         if ((data instanceof String && !data.toString().isEmpty()) || data instanceof JSONObject) {
             if (data instanceof JSONObject) {
-                photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + empPhoto.getInt("id") + "}", true);
+                photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + (empPhoto == null ? -1 : empPhoto.getInt("id")) + "}", true);
                 if (photoBase64.equalsIgnoreCase("unknown")) {
-                    logger.error("Not found image (" + empPhoto.getInt("id") + ")");
+                    logger.error("Not found image (" + (empPhoto == null ? -1 : empPhoto.getInt("id")) + ")");
 //                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
                 }
             } else {
@@ -753,10 +753,10 @@ public class MainApp extends Components {
             logger.error("When delete face data from Face Recognition Terminal, occurred error.");
             return response;
         } else {
-            JSONObject empPhoto = jsonObject.getJSONObject("empphoto");
-            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
+            JSONObject empPhoto = jsonObject.isNull("empphoto") ? null : jsonObject.getJSONObject("empphoto");
+            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
             if (frtSentStatus.getString("code").startsWith("success")) {
-                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
+                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
                 if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {
                     response.put("valid", true);
                     response.put("info", "Success.");
