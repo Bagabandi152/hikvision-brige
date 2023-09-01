@@ -1,11 +1,14 @@
 package mn.sync.hikvisionbrige.constants;
 
 import javafx.collections.ObservableList;
+import javafx.geometry.HPos;
 import javafx.geometry.Pos;
+import javafx.geometry.VPos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
@@ -64,24 +67,26 @@ public abstract class Components {
         return logTableView;
     }
 
-    public static HBox getSeparatorWithLabel(String text) {
+    public static VBox getSeparatorWithLabel(String text) {
         // Create a label
         Label label = new Label(text);
-        label.setPrefWidth(135);
         label.setAlignment(Pos.CENTER);
         label.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13.5));
 
-        // Create a horizontal separator
-        Line sepLeft = new Line(0, 0, 80, 0);
-        sepLeft.getStrokeDashArray().addAll(1.0, 5.0);
-        Line sepRight = new Line(0, 0, 80, 0);
-        sepRight.getStrokeDashArray().addAll(1.0, 5.0);
-
         // Place them in an HBox
-        HBox hbox = new HBox(sepLeft, label, sepRight);
-        hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setSpacing(10);
-        return hbox;
+        HBox hbox = new HBox();
+        hbox.getChildren().add(label);
+        hbox.setAlignment(Pos.CENTER);
+
+        //Add separator
+        VBox vBox = new VBox();
+        vBox.setSpacing(5);
+        Separator sepTop = new Separator();
+        sepTop.setHalignment(HPos.CENTER);
+        Separator sepDown = new Separator();
+        sepDown.setHalignment(HPos.CENTER);
+        vBox.getChildren().addAll(sepTop, hbox, sepDown);
+        return vBox;
     }
 
     private static LoadingHolder loadingHolder = LoadingHolder.getInstance();

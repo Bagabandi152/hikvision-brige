@@ -24,4 +24,6 @@ public interface Functions {
     void showAlert(String title, String headerText, String msg, Alert.AlertType alertType);
 
     String convertImageToBase64(String imagePath);
+
+    String convertImageUrlToBase64(String url);
 }

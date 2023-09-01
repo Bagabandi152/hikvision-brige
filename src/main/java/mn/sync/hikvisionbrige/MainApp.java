@@ -1,5 +1,7 @@
 package mn.sync.hikvisionbrige;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
@@ -16,6 +18,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import mn.sync.hikvisionbrige.constants.Components;
+import mn.sync.hikvisionbrige.constants.Functions;
 import mn.sync.hikvisionbrige.constants.FxUtils;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.*;
@@ -44,8 +47,9 @@ public class MainApp extends Components {
     private static final UserHolder userHolder = UserHolder.getInstance();
     private static final InstHolder instHolder = InstHolder.getInstance();
     private static final EmpHolder empHolder = EmpHolder.getInstance();
+    private static final DeviceUserHolder deviceUserHolder = DeviceUserHolder.getInstance();
     private static TableView<LogData> logTableView = null;
-    private static Logger logger = LogManager.getLogger(MainApp.class);
+    private static final Logger logger = LogManager.getLogger(MainApp.class);
 
     public static void start(Stage stage) {
 
@@ -86,9 +90,11 @@ public class MainApp extends Components {
         comboBox.setPromptText("Select . . .");
         comboBox.setMaxWidth(295);
         comboBox.getStylesheets().add("CustomComboBox.css");
+        ComboBox<DeviceUser> devUserComboBox = new ComboBox<>();
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
                 BASE_URL = "http://" + newValue.getIpAddress();
+                devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL, logger));
             }
             comboBox.setStyle("-fx-border-color: none;");
             deviceHolder.setDevice(newValue);
@@ -128,6 +134,26 @@ public class MainApp extends Components {
                 return empComboBox.getItems().stream().filter(object -> object.getEndUserNameEng().equals(string)).findFirst().orElse(null);
             }
 
+        });
+
+        devUserComboBox.setPromptText("Select . . .");
+        devUserComboBox.setMaxWidth(295);
+        devUserComboBox.getStylesheets().add("CustomComboBox.css");
+        devUserComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            devUserComboBox.setStyle("-fx-border-color: none;");
+            deviceUserHolder.setDeviceUser(newValue);
+        });
+        FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
+        devUserComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(DeviceUser object) {
+                return object != null ? object.getName() : "";
+            }
+
+            @Override
+            public DeviceUser fromString(String string) {
+                return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
+            }
         });
 
         //Create FlowPane, then add ComboBox
@@ -172,13 +198,16 @@ public class MainApp extends Components {
         empCardFlowPane.getChildren().add(empCardTF);
         vBox.getChildren().add(empCardFlowPane);
 
-        //Create Separators
-        Separator instSep = new Separator();
-        instSep.setHalignment(HPos.CENTER);
-        Separator sepTop = new Separator();
-        sepTop.setHalignment(HPos.CENTER);
-        Separator sepDown = new Separator();
-        sepDown.setHalignment(HPos.CENTER);
+        VBox vBoxDU = new VBox();
+        vBoxDU.setSpacing(10);
+
+        FlowPane deviceUserFP = new FlowPane();
+        deviceUserFP.setHgap(5);
+        Label deviceUserCL = new Label("Select a user on device:");
+        deviceUserCL.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+        deviceUserFP.getChildren().add(deviceUserCL);
+        deviceUserFP.getChildren().add(devUserComboBox);
+        vBoxDU.getChildren().add(deviceUserFP);
 
         //Create HBox, then add Buttons
         HBox instBtn = new HBox();
@@ -187,6 +216,8 @@ public class MainApp extends Components {
         hBoxBtnTop.setSpacing(10);
         HBox hBoxBtnDown = new HBox();
         hBoxBtnDown.setSpacing(10);
+        HBox hBoxDU = new HBox();
+        hBoxDU.setSpacing(10);
 
         //Create Button to change institution
         Button changeBtn = new Button("Change");
@@ -289,6 +320,7 @@ public class MainApp extends Components {
                 return;
             }
             logger.info("Successfully inserted time data to ERP.");
+            assert sentArray != null;
             logger.info(sentArray.length() + " rows time data inserted.");
             ImplFunctions.functions.showAlert("Success Message", "", "Successfully synced time data.", Alert.AlertType.INFORMATION);
         };
@@ -444,28 +476,56 @@ public class MainApp extends Components {
         newCardBtn.setOnAction(addEmpCardEvent);
         hBoxBtnDown.getChildren().add(newCardBtn);
 
+        //Create Button to upload user on device to ERP
+        Button uploadBtn = new Button("Upload");
+        EventHandler<ActionEvent> uploadEvent = e -> {
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
+                comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
+                return;
+            }
+            if (deviceUserHolder.getDeviceUser() == null) {
+                devUserComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device user field is required.");
+                return;
+            }
+            ObservableList<DeviceUser> list = FXCollections.observableArrayList();
+            list.add(deviceUserHolder.getDeviceUser());
+            uploadUserData(list);
+        };
+        uploadBtn.setOnAction(uploadEvent);
+        hBoxDU.getChildren().add(uploadBtn);
+
+        Button uploadAllBtn = new Button("Upload all");
+        EventHandler<ActionEvent> uploadAllEvent = e -> {
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
+                comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
+                return;
+            }
+            uploadUserData(DeviceUser.getDeviceUserList(BASE_URL, logger));
+        };
+        uploadAllBtn.setOnAction(uploadAllEvent);
+        hBoxDU.getChildren().add(uploadAllBtn);
+
         //Add children to root
         if (permission.getCreate()) {
-            root.getChildren().add(getSeparatorWithLabel("Institution"));
             root.getChildren().add(instFlowPane);
-            root.getChildren().add(instSep);
             root.getChildren().add(instBtn);
             root.getChildren().add(getSeparatorWithLabel("Device section"));
             root.getChildren().add(flowPane);
-            root.getChildren().add(sepTop);
             root.getChildren().add(hBoxBtnTop);
             root.getChildren().add(getSeparatorWithLabel("Employee section"));
             root.getChildren().add(vBox);
-            root.getChildren().add(sepDown);
             root.getChildren().add(hBoxBtnDown);
+            root.getChildren().add(getSeparatorWithLabel("Upload user to ERP"));
+            root.getChildren().add(vBoxDU);
+            root.getChildren().add(hBoxDU);
         } else if (permission.getRead()) {
-            root.getChildren().add(getSeparatorWithLabel("Institution"));
             root.getChildren().add(instFlowPane);
-            root.getChildren().add(instSep);
             root.getChildren().add(instBtn);
             root.getChildren().add(getSeparatorWithLabel("Device section"));
             root.getChildren().add(flowPane);
-            root.getChildren().add(sepTop);
             root.getChildren().add(hBoxBtnTop);
         } else {
             Label permDenied = new Label("Permission denied.");
@@ -481,7 +541,7 @@ public class MainApp extends Components {
 
         //Set config in stage
         stage.setResizable(true);
-        stage.setMinWidth(360);
+        stage.setMinWidth(permission.getCreate() ? 510 : 360);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
         Scene scene = new Scene(root, 345, permission.getCreate() ? 630 : permission.getRead() ? 500 : 260);
         stage.setScene(scene);
@@ -680,17 +740,14 @@ public class MainApp extends Components {
                 photoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + (empPhoto == null ? -1 : empPhoto.getInt("id")) + "}", true);
                 if (photoBase64.equalsIgnoreCase("unknown")) {
                     logger.error("Not found image (" + (empPhoto == null ? -1 : empPhoto.getInt("id")) + ")");
-//                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
                 }
             } else {
                 photoBase64 = ImplFunctions.functions.convertImageToBase64(data + ".jpg");
             }
         }
 
-//        showLoading(stage, true);
         String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceId + "\", \"personid\": \"" + personId + "\", \"empid\": \"" + personId + "\", \"photo\": \"" + (photoBase64.equalsIgnoreCase("unknown") ? "" : photoBase64) + "\", \"cardno\": \"" + cardNo + "\"}";
         String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
-//        showLoading(stage, false);
         if (storeDevEmpRes.startsWith("Request failed")) {
             logger.error("When insert device employee data, occurred error: " + storeDevEmpRes);
             return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes + "\"}");
@@ -727,6 +784,106 @@ public class MainApp extends Components {
                 logger.error(fileName + ".jpg file cannot delete.");
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static JSONObject sendUDtoERP(DeviceUser deviceUser) {
+        Integer deviceId = deviceHolder.getDevice().getId();
+
+        String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + deviceUser.getEmployeeNo() + "\"\n" + "}";
+        DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
+        if (checkFaceExist.getContentType().startsWith("Request failed")) {
+            logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
+        }
+
+        String photoBase64 = "";
+        JSONObject checkFaceResObj = new JSONObject(checkFaceExist.getBody().toString());
+        if (checkFaceResObj.getString("statusString").equals("OK")) {
+            if (checkFaceResObj.getString("responseStatusStrg").equals("OK")) {
+                logger.info("Face data was found.");
+                if (!checkFaceResObj.isNull("MatchList")) {
+                    JSONArray imageList = checkFaceResObj.getJSONArray("MatchList");
+                    if (imageList.length() > 0) {
+                        photoBase64 = ImplFunctions.functions.convertImageUrlToBase64(imageList.getJSONObject(0).getString("faceURL"));
+                    }
+                }
+            } else {
+                logger.warn("Face data is not found.");
+            }
+        } else {
+            logger.error(checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"));
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode") + "\"}");
+        }
+
+        String checkCardReqBody = "{\n" + "    \"CardInfoSearchCond\":{\n" + "        \"searchID\":\"1\",\n" + "        \"searchResultPosition\": 0,\n" + "        \"maxResults\": 30,\n" + "        \"EmployeeNoList\":[{\n" + "            \"employeeNo\":\"" + deviceUser.getEmployeeNo() + "\" \n" + "        }]\n" + "    }\n" + "}";
+        DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST");
+        if (checkCardExist.getContentType().startsWith("Request failed")) {
+            logger.error(" CardInfoSearch Error on device user: " + checkFaceExist.getBody());
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
+        }
+
+        String cardNo = "";
+        JSONObject checkCardResObj = new JSONObject(checkCardExist.getBody().toString());
+        JSONObject jObjRes = checkCardResObj.getJSONObject("CardInfoSearch");
+        if (jObjRes.getString("responseStatusStrg").equals("OK")) {
+            logger.info("Card data was found.");
+            if (!jObjRes.isNull("CardInfo")) {
+                JSONArray cardList = jObjRes.getJSONArray("CardInfo");
+                if (cardList.length() > 0) {
+                    cardNo = cardList.getJSONObject(0).getString("cardNo");
+                }
+            }
+        } else {
+            logger.warn("Card data is not found. (" + jObjRes.getString("responseStatusStrg") + ")");
+        }
+
+        String storeDevEmpReqBody = "{\"deviceid\": \"" + deviceId + "\", \"personid\": \"" + deviceUser.getEmployeeNo() + "\", \"empid\": \"" + deviceUser.getEmployeeNo() + "\", \"photo\": \"" + photoBase64 + "\", \"cardno\": \"" + cardNo + "\"}";
+        String storeDevEmpRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic", "POST", "application/json", storeDevEmpReqBody, true);
+        if (storeDevEmpRes.startsWith("Request failed")) {
+            logger.error("When upload device user data, occurred error: " + storeDevEmpRes);
+            return new JSONObject("{\"code\": \"error\", \"msg\": \"" + storeDevEmpRes + "\"}");
+        }
+
+        logger.info("Upload user data to ERP.");
+        return new JSONObject("{\"code\": \"success\", \"msg\": \"Success uploaded.\"}");
+    }
+
+    public static JSONObject uploadUserToERP(DeviceUser deviceUser) {
+        JSONObject response = new JSONObject();
+        JSONObject erpSentStatus = sendUDtoERP(deviceUser);
+        if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image"))) {
+            response.put("valid", true);
+            response.put("info", "Success.");
+            logger.info("Successfully upload user data to ERP.");
+        } else {
+            response.put("valid", false);
+            response.put("info", erpSentStatus.getString("msg"));
+            logger.error(erpSentStatus.getString("msg"));
+        }
+        return response;
+    }
+
+    public static void uploadUserData(ObservableList<DeviceUser> list) {
+
+        Boolean isAllSent = true;
+        JSONObject sentStatus = null;
+        for (int i = 0; i < list.size(); i++) {
+            DeviceUser deviceUser = list.get(i);
+            sentStatus = uploadUserToERP(deviceUser);
+            if (!sentStatus.getBoolean("valid")) {
+                isAllSent = false;
+                break;
+            }
+        }
+
+        if (!isAllSent) {
+            logger.error("When upload employee data to ERP, occurred error.");
+            logger.error(sentStatus.getString("info"));
+            ImplFunctions.functions.showAlert("Error", "", sentStatus.getString("info"), Alert.AlertType.ERROR);
+        } else {
+            logger.info("Successfully upload user data.");
+            ImplFunctions.functions.showAlert("Success", "", "Successfully upload user data.", Alert.AlertType.INFORMATION);
         }
     }
 

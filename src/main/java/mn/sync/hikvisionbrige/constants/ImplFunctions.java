@@ -202,5 +202,43 @@ public class ImplFunctions {
 
             return null;
         }
+
+        @Override
+        public String convertImageUrlToBase64(String imageUrl) {
+            String base64Image = "";
+            try {
+                // Fetch the image from the URL
+                URL url = new URL(imageUrl);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    // Read the image data
+                    InputStream inputStream = connection.getInputStream();
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+                    byte[] imageBytes = outputStream.toByteArray();
+                    System.out.println("imageBytes: " + imageBytes);
+
+                    // Encode the image bytes to Base64
+                    base64Image = Base64.getEncoder().encodeToString(imageBytes);
+
+                    // Close streams
+                    inputStream.close();
+                    outputStream.close();
+
+                } else {
+                    System.out.println("Failed to retrieve image. Response code: " + responseCode);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return base64Image;
+        }
     };
 }

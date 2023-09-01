@@ -1,6 +1,6 @@
 package mn.sync.hikvisionbrige.holders;
 
-import mn.sync.hikvisionbrige.models.Employee;
+import mn.sync.hikvisionbrige.models.DeviceUser;
 
 /**
  * @author Bagaa
@@ -9,23 +9,23 @@ import mn.sync.hikvisionbrige.models.Employee;
  * @purpose
  * @definition
  */
-public final class EmpHolder {
+public final class DeviceUserHolder {
 
-    private Employee employee;
-    private final static EmpHolder INSTANCE = new EmpHolder();
+    private DeviceUser deviceUser;
+    private final static DeviceUserHolder INSTANCE = new DeviceUserHolder();
 
-    private EmpHolder() {
+    private DeviceUserHolder() {
     }
 
-    public static EmpHolder getInstance() {
+    public static DeviceUserHolder getInstance() {
         return INSTANCE;
     }
 
-    public void setEmployee(Employee employee) {
-        this.employee = employee;
+    public void setDeviceUser(DeviceUser deviceUser) {
+        this.deviceUser = deviceUser;
     }
 
-    public Employee getEmployee() {
-        return this.employee;
+    public DeviceUser getDeviceUser() {
+        return this.deviceUser;
     }
 }
