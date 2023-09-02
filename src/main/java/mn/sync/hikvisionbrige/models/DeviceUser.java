@@ -10,6 +10,7 @@ import org.json.JSONObject;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 
 import org.apache.logging.log4j.Logger;
 
@@ -71,7 +72,7 @@ public class DeviceUser {
                 ex.printStackTrace();
             }
         }
-
+        list.sort(Comparator.comparing(DeviceUser::getName));
         return list;
     }
 

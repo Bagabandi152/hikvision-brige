@@ -85,16 +85,36 @@ public class MainApp extends Components {
 
         });
 
+        ComboBox<DeviceUser> devUserComboBox = new ComboBox<>();
+        devUserComboBox.setPromptText("Select . . .");
+        devUserComboBox.setMaxWidth(295);
+        devUserComboBox.getStylesheets().add("CustomComboBox.css");
+        devUserComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            devUserComboBox.setStyle("-fx-border-color: none;");
+            deviceUserHolder.setDeviceUser(newValue);
+        });
+
         ComboBox<Device> comboBox = new ComboBox<>();
         comboBox.setItems(Device.getDeviceList());
         comboBox.setPromptText("Select . . .");
         comboBox.setMaxWidth(295);
         comboBox.getStylesheets().add("CustomComboBox.css");
-        ComboBox<DeviceUser> devUserComboBox = new ComboBox<>();
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
                 BASE_URL = "http://" + newValue.getIpAddress();
                 devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL, logger));
+                FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
+                devUserComboBox.setConverter(new StringConverter<>() {
+                    @Override
+                    public String toString(DeviceUser object) {
+                        return object != null ? object.getName() : "";
+                    }
+
+                    @Override
+                    public DeviceUser fromString(String string) {
+                        return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
+                    }
+                });
             }
             comboBox.setStyle("-fx-border-color: none;");
             deviceHolder.setDevice(newValue);
@@ -134,26 +154,6 @@ public class MainApp extends Components {
                 return empComboBox.getItems().stream().filter(object -> object.getEndUserNameEng().equals(string)).findFirst().orElse(null);
             }
 
-        });
-
-        devUserComboBox.setPromptText("Select . . .");
-        devUserComboBox.setMaxWidth(295);
-        devUserComboBox.getStylesheets().add("CustomComboBox.css");
-        devUserComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            devUserComboBox.setStyle("-fx-border-color: none;");
-            deviceUserHolder.setDeviceUser(newValue);
-        });
-        FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
-        devUserComboBox.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(DeviceUser object) {
-                return object != null ? object.getName() : "";
-            }
-
-            @Override
-            public DeviceUser fromString(String string) {
-                return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
-            }
         });
 
         //Create FlowPane, then add ComboBox
@@ -239,7 +239,7 @@ public class MainApp extends Components {
 
             if (response.equals("\"success\"")) {
                 logger.info("Successfully changed institution.");
-//                stage.close();
+                stage.close();
                 MainApp.start(stage);
             }
 
@@ -594,6 +594,7 @@ public class MainApp extends Components {
         String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
         DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT");
 //        showLoading(stage, false);
+
         if (setUserInfoRes.getContentType().startsWith("Request failed")) {
             logger.error("UserInfo SetUp Error: " + setUserInfoRes.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
@@ -637,7 +638,6 @@ public class MainApp extends Components {
                 String empPhotoBase64 = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/showdevempphoto", "POST", "application/json", "{\"photoid\": " + (empPhoto == null ? -1 : empPhoto.getInt("id")) + "}", true);
                 if (empPhotoBase64.equalsIgnoreCase("unknown")) {
                     logger.warn(empName + "'s image not found!");
-//                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Not found image\"}");
                 } else {
                     photoBytes = Base64.getDecoder().decode(empPhotoBase64);
                 }
@@ -654,9 +654,7 @@ public class MainApp extends Components {
             if (photoBytes != null) {
                 formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
 
-//                showLoading(stage, true);
                 DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
-//                showLoading(stage, false);
                 if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
                     logger.error("FDLib FaceDataRecord Error: " + saveUserFaceRes.getBody());
                     return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");

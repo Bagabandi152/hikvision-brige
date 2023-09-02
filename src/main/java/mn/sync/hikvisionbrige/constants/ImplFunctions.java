@@ -11,11 +11,10 @@ import okhttp3.*;
 import org.json.XML;
 
 import java.io.*;
+import java.net.*;
 import java.net.Authenticator;
-import java.net.HttpURLConnection;
-import java.net.PasswordAuthentication;
-import java.net.URL;
 import java.util.Base64;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Bagaa
@@ -37,7 +36,7 @@ public class ImplFunctions {
             });
 
             // Create OkHttpClient
-            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD))).build();
+            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD))).connectTimeout(30, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).retryOnConnectionFailure(true).build();
 
             // Define the request body (for POST requests)
             MediaType mediaType = MediaType.parse(type);
@@ -53,7 +52,7 @@ public class ImplFunctions {
             }
 
             // Create the request
-            Request.Builder requestBuilder = new Request.Builder().url(API);
+            Request.Builder requestBuilder = new Request.Builder().url(API).header("Connection", "close");
 
             if (requestMethod.toUpperCase().equals("POST")) {
                 requestBuilder.post(body);
@@ -67,8 +66,10 @@ public class ImplFunctions {
 
             Request request = requestBuilder.build();
 
-            ResponseBody responseBody = null;
+            ResponseBody responseBody;
             DigestResponseData digestResponseData = new DigestResponseData();
+            digestResponseData.setContentType("Exception error");
+
             try {
                 // Send the request
                 Response response = client.newCall(request).execute();
@@ -98,6 +99,9 @@ public class ImplFunctions {
                     digestResponseData.setContentType("Request failed");
                     digestResponseData.setBody(response.code());
                 }
+            } catch (SocketTimeoutException timeoutEx) {
+                // Handle timeout exception
+                timeoutEx.printStackTrace();
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
