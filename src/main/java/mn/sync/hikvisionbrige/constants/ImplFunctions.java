@@ -36,7 +36,7 @@ public class ImplFunctions {
             });
 
             // Create OkHttpClient
-            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD))).connectTimeout(30, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).retryOnConnectionFailure(true).build();
+            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD))).retryOnConnectionFailure(true).build();
 
             // Define the request body (for POST requests)
             MediaType mediaType = MediaType.parse(type);
