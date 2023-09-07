@@ -14,7 +14,6 @@ import java.io.*;
 import java.net.*;
 import java.net.Authenticator;
 import java.util.Base64;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Bagaa

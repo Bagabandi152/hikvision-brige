@@ -3,13 +3,13 @@ package mn.sync.hikvisionbrige.models;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
+import mn.sync.hikvisionbrige.MainApp;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
+import org.apache.logging.log4j.LogManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 
 import org.apache.logging.log4j.Logger;
@@ -29,6 +29,9 @@ public class DeviceUser {
     Integer numOfCard;
     Integer numOfFace;
 
+    private static final Logger logger = LogManager.getLogger(MainApp.class);
+
+
     public DeviceUser(String employeeNo, String name, String userType, String gender, Integer numOfCard, Integer numOfFace) {
         this.employeeNo = employeeNo;
         this.name = name;
@@ -38,7 +41,7 @@ public class DeviceUser {
         this.numOfFace = numOfFace;
     }
 
-    public static ObservableList<DeviceUser> getDeviceUserList(String BASE_URL, Logger logger) {
+    public static ObservableList<DeviceUser> getDeviceUserList(String BASE_URL) {
         ObservableList<DeviceUser> list = FXCollections.observableArrayList();
 
         int searchResultPosition = 0;
