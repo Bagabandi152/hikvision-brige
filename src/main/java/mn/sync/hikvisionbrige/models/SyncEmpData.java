@@ -41,7 +41,7 @@ public class SyncEmpData {
     public static ObservableList<SyncEmpData> getEmpDataList() {
         ObservableList<SyncEmpData> list = FXCollections.observableArrayList();
 
-        String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/getotherdevemps", "POST", "application/json", "{}", true);
+        String response = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/getotherdevemps", "POST", "application/json", "{\"listType\": \"all\"}", true);
         if (response.startsWith("Request failed")) {
             logger.error("Get sync employees data error: " + response);
             return list;
