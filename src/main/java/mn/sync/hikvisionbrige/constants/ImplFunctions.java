@@ -101,6 +101,8 @@ public class ImplFunctions {
             } catch (SocketTimeoutException timeoutEx) {
                 // Handle timeout exception
                 timeoutEx.printStackTrace();
+                digestResponseData.setContentType("Request failed");
+                digestResponseData.setBody("Cannot connect to device!");
             } catch (IOException ex) {
                 ex.printStackTrace();
             }

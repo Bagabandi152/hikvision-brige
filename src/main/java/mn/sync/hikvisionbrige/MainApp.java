@@ -678,6 +678,53 @@ public class MainApp extends Components {
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + setUserInfoRes.getBody() + "\"}");
         }
 
+        if (!(cardNo.isEmpty() || cardNo.isBlank())) {
+
+            String checkCardReqBody = "{\n" + "  \"CardInfoSearchCond\":{\n" + "    \"searchID\":\"1\",\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"EmployeeNoList\":[{\n" + "      \"employeeNo\":\"" + employeeNo + "\"\n" + "    }]\n" + "  }\n" + "}";
+            DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST");
+
+            if (checkCardExist.getContentType().startsWith("Request failed")) {
+                logger.error("CardInfo Search Error: " + checkCardExist.getBody());
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkCardExist.getBody() + "\"}");
+            }
+
+            JSONObject checkCardResObj = new JSONObject(checkCardExist.getBody().toString());
+            JSONObject jObjRes = checkCardResObj.getJSONObject("CardInfoSearch");
+            if (jObjRes != null) {
+                if (jObjRes.getString("responseStatusStrg").equals("OK")) {
+                    logger.warn("Card info is already existed.");
+//                    return new JSONObject("{\"code\": \"warning\", \"msg\": \"Card info is already existed.\"}
+                    JSONArray cardNoList = jObjRes.isNull("CardInfo") ? new JSONArray() : jObjRes.getJSONArray("CardInfo");
+                    for (int i = 0; i < cardNoList.length(); i++) {
+                        JSONObject cardObj = cardNoList.getJSONObject(i);
+                        String delCardReqBody = "{\n" + "\t\"CardInfoDelCond\": {\n" + "\t\t\"CardNoList\": [{\n" + "\t\t\t\"cardNo\": \"" + (!cardObj.isNull("cardNo") ? cardObj.getString("cardNo") : "") + "\"\n" + "\t\t}]\n" + "\t}\n" + "}";
+                        DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Delete?format=json", delCardReqBody, "application/json", "PUT");
+                        if (saveUserCardRes.getContentType().startsWith("Request failed")) {
+                            logger.error("CardInfo CardInfoRecord Delete Error: " + saveUserCardRes.getBody());
+                            return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserCardRes.getBody() + "\"}");
+                        }
+                    }
+                }
+            } else {
+                logger.error(checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode"));
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode") + "\"}");
+            }
+
+            String cardReqBody = "{\"CardInfo\":{\"employeeNo\":\"" + employeeNo + "\",\"cardNo\":\"" + cardNo + "\",\"cardType\":\"normalCard\"}}";
+            DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT");
+            if (saveUserCardRes.getContentType().startsWith("Request failed")) {
+                logger.error("CardInfo CardInfoRecord Error: " + saveUserCardRes.getBody());
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserCardRes.getBody() + "\"}");
+            }
+
+            JSONObject saveUserCardResObj = new JSONObject(saveUserCardRes.getBody().toString());
+            if (!saveUserCardResObj.getString("statusString").equals("OK")) {
+                logger.error(saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode"));
+                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode") + "\"}");
+            }
+        }
+
+
         if ((data instanceof String && !data.toString().isEmpty()) || data instanceof JSONObject) {
 
             JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
@@ -741,42 +788,6 @@ public class MainApp extends Components {
                     logger.error(saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode"));
                     return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserFaceResObj.getString("statusString") + ": " + saveUserFaceResObj.getString("subStatusCode") + "\"}");
                 }
-            }
-        }
-
-        if (!(cardNo.isEmpty() || cardNo.isBlank())) {
-
-            String checkCardReqBody = "{\n" + "  \"CardInfoSearchCond\":{\n" + "    \"searchID\":\"1\",\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"CardNoList\":[{\n" + "      \"cardNo\":\"" + cardNo + "\"\n" + "    }]\n" + "  }\n" + "}";
-            DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST");
-
-            if (checkCardExist.getContentType().startsWith("Request failed")) {
-                logger.error("CardInfo Search Error: " + checkCardExist.getBody());
-                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkCardExist.getBody() + "\"}");
-            }
-
-            JSONObject checkCardResObj = new JSONObject(checkCardExist.getBody().toString());
-            JSONObject jObjRes = checkCardResObj.getJSONObject("CardInfoSearch");
-            if (jObjRes != null) {
-                if (jObjRes.getString("responseStatusStrg").equals("OK")) {
-                    logger.warn("Card info is already existed.");
-                    return new JSONObject("{\"code\": \"warning\", \"msg\": \"Card info is already existed.\"}");
-                }
-            } else {
-                logger.error(checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode"));
-                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode") + "\"}");
-            }
-
-            String cardReqBody = "{\"CardInfo\":{\"employeeNo\":\"" + employeeNo + "\",\"cardNo\":\"" + cardNo + "\",\"cardType\":\"normalCard\"}}";
-            DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT");
-            if (saveUserCardRes.getContentType().startsWith("Request failed")) {
-                logger.error("CardInfo CardInfoRecord Error: " + saveUserCardRes.getBody());
-                return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserCardRes.getBody() + "\"}");
-            }
-
-            JSONObject saveUserCardResObj = new JSONObject(saveUserCardRes.getBody().toString());
-            if (!saveUserCardResObj.getString("statusString").equals("OK")) {
-                logger.error(saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode"));
-                return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode") + "\"}");
             }
         }
 
@@ -969,16 +980,19 @@ public class MainApp extends Components {
         if (employee.getInt("status") == 2) {
             Boolean deleteUserFRTStatus = deleteEmpDataFaceRecogTerm(stage, jsonObject);
             if (deleteUserFRTStatus) {
-                Boolean deleteUserERPStatus = deleteEmpDataERP(stage, jsonObject);
-                response.put("valid", deleteUserERPStatus);
-                if (deleteUserERPStatus) {
-                    response.put("info", "Success.");
-                    logger.info("Successfully delete face data from FRT.");
-                } else {
-                    response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
-                    logger.error("When delete face data from Face Recognition Terminal, occurred error.");
-                }
+                response.put("info", "Success.");
+                logger.info("Successfully delete face data from FRT.");
                 return response;
+//                Boolean deleteUserERPStatus = deleteEmpDataERP(stage, jsonObject);
+//                response.put("valid", deleteUserERPStatus);
+//                if (deleteUserERPStatus) {
+//                    response.put("info", "Success.");
+//                    logger.info("Successfully delete face data from FRT.");
+//                } else {
+//                    response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
+//                    logger.error("When delete face data from Face Recognition Terminal, occurred error.");
+//                }
+//                return response;
             }
             response.put("valid", false);
             response.put("info", "When delete face data from Face Recognition Terminal, occurred error.");
