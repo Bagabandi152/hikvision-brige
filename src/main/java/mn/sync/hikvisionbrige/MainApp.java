@@ -32,6 +32,7 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -50,6 +51,7 @@ public class MainApp extends Components {
     private static final Logger logger = LogManager.getLogger(MainApp.class);
     private static Department selectedDep = null;
     private static SyncEmpData selectedEmpData = null;
+    private static EventType eventType = null;
 
     public static void start(Stage stage) {
 
@@ -572,6 +574,110 @@ public class MainApp extends Components {
         uploadAllBtn.setOnAction(uploadAllEvent);
         hBoxDU.getChildren().add(uploadAllBtn);
 
+        //Patch to sync time data section.
+        VBox reSyncVBox = new VBox();
+        reSyncVBox.setSpacing(10);
+        FlowPane reSyncFP = new FlowPane();
+        reSyncFP.setHgap(5);
+        DatePicker datePicker = new DatePicker();
+        StringConverter<LocalDate> converter = new StringConverter<LocalDate>() {
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            @Override
+            public String toString(LocalDate date) {
+                if (date != null) {
+                    return dateFormatter.format(date);
+                } else {
+                    return "";
+                }
+            }
+
+            @Override
+            public LocalDate fromString(String string) {
+                if (string != null && !string.isEmpty()) {
+                    return LocalDate.parse(string, dateFormatter);
+                } else {
+                    return null;
+                }
+            }
+        };
+        datePicker.setConverter(converter);
+
+        ComboBox<EventType> eventTypeComboBox = new ComboBox();
+        ObservableList<EventType> list = EventType.getEventTypes();
+        eventTypeComboBox.setItems(list);
+        eventTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            eventTypeComboBox.setStyle("-fx-border-color: none;");
+            eventType = newValue;
+        });
+        ;
+        eventTypeComboBox.getSelectionModel().select(0);
+        eventTypeComboBox.setPromptText("Select . . .");
+        eventTypeComboBox.setPrefWidth(150);
+
+        //Create Button patch to sync time data
+        Button reSyncBtn = new Button("Patch to sync");
+        EventHandler<ActionEvent> reSyncEvent = e -> {
+            if (datePicker.getValue() == null || datePicker.getValue().toString().isEmpty()) {
+                logger.warn("Patch date field is required.");
+                return;
+            }
+
+            if (eventType == null) {
+                eventTypeComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Event type is required.");
+                return;
+            }
+
+            if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
+                comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
+                logger.warn("Device field is required.");
+                return;
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+
+            // Set the time zone offset to +08:00
+            ZoneOffset zoneOffset = ZoneOffset.ofHours(8);
+
+            // Create a DateTimeFormatter with the desired format
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+
+            // Format the current date and time to a string
+            String startDate = datePicker.getValue().toString() + "T00:00:00+08:00";
+            String endDate = now.atOffset(zoneOffset).format(formatter);
+
+            System.out.println("startDate: " + startDate);
+            System.out.println("endDate: " + endDate);
+
+            JSONArray sentArray = getAcsEvents(startDate, endDate, eventType.getId());
+
+            Device activeDevice = deviceHolder.getDevice();
+            String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
+            if (uploadResponse.startsWith("Request failed")) {
+                logger.error("Insert time data error: " + uploadResponse);
+                ImplFunctions.functions.showAlert("Error", "", uploadResponse, Alert.AlertType.ERROR);
+                return;
+            }
+            if (uploadResponse.isEmpty() || uploadResponse.isBlank()) {
+                logger.error("When insert time data to ERP, occurred error.");
+                ImplFunctions.functions.showAlert("Error Message", "", "When upload time, occurred error.", Alert.AlertType.ERROR);
+                return;
+            }
+            logger.info("Successfully patched to insert time data to ERP.");
+            assert sentArray != null;
+            logger.info(sentArray.length() + " rows time data sent to ERP.");
+            ImplFunctions.functions.showAlert("Success Message", "", "Successfully patched to sync time data.", Alert.AlertType.INFORMATION);
+        };
+        reSyncBtn.setOnAction(reSyncEvent);
+
+        Label label1 = new Label("Start date:");
+        label1.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+        Label label2 = new Label("Event type:");
+        label2.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
+        reSyncFP.getChildren().addAll(label1, datePicker, label2, eventTypeComboBox);
+        reSyncVBox.getChildren().addAll(reSyncFP, reSyncBtn);
+
         //Add children to root
         if (permission.getCreate()) {
             root.getChildren().add(instFlowPane);
@@ -587,6 +693,8 @@ public class MainApp extends Components {
             root.getChildren().add(getSeparatorWithLabel("Upload user on device to ERP"));
             root.getChildren().add(vBoxDU);
             root.getChildren().add(hBoxDU);
+            root.getChildren().add(getSeparatorWithLabel("Patch to sync time data section"));
+            root.getChildren().add(reSyncVBox);
         } else if (permission.getRead()) {
             root.getChildren().add(instFlowPane);
             root.getChildren().add(instBtn);
@@ -595,6 +703,8 @@ public class MainApp extends Components {
             root.getChildren().add(depFlowPane);
             root.getChildren().add(syncEmpDataFlowPane);
             root.getChildren().add(hBoxBtnTop);
+            root.getChildren().add(getSeparatorWithLabel("Patch to sync time data section"));
+            root.getChildren().add(reSyncVBox);
         } else {
             Label permDenied = new Label("Permission denied.");
             permDenied.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
@@ -611,7 +721,7 @@ public class MainApp extends Components {
         stage.setResizable(true);
         stage.setMinWidth(permission.getCreate() ? 580 : 360);
         stage.setTitle(instHolder.getInst().getInstShortNameEng() + " - Face Recog Terminal");
-        Scene scene = new Scene(root, 345, permission.getCreate() ? 700 : permission.getRead() ? 570 : 260);
+        Scene scene = new Scene(root, 345, permission.getCreate() ? 830 : permission.getRead() ? 700 : 260);
         stage.setScene(scene);
         stage.show();
 
