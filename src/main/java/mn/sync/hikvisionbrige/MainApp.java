@@ -280,7 +280,7 @@ public class MainApp extends Components {
         hBoxDU.setSpacing(10);
 
         //Create Button to change institution
-        Button changeBtn = new Button("Change");
+        Button changeBtn = new Button("Change inst");
         EventHandler<ActionEvent> changeInst = e -> {
             if (instHolder.getInst() == null) {
                 instComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -358,7 +358,11 @@ public class MainApp extends Components {
             System.out.println("startDate: " + startDate);
             System.out.println("endDate: " + endDate);
 
-            JSONArray sentArray = getAcsEvents(startDate, endDate);
+            JSONArray sentArray = getAcsEvents(startDate, endDate, 75); // 75 -> Face events
+            JSONArray cardEventsArray = getAcsEvents(startDate, endDate, 1); // 1 -> Card events
+            for (int i = 0; i < cardEventsArray.length(); i++) {
+                sentArray.put(cardEventsArray.getJSONObject(i));
+            }
 
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
             if (uploadResponse.startsWith("Request failed")) {
@@ -969,7 +973,7 @@ public class MainApp extends Components {
             ImplFunctions.functions.showAlert("Error", "", sentStatus.getString("info"), Alert.AlertType.ERROR);
         } else {
             logger.info("Successfully upload user data.");
-            ImplFunctions.functions.showAlert("Success", "", "Successfully upload user data.", Alert.AlertType.INFORMATION);
+            ImplFunctions.functions.showAlert("Success", "", "Successfully upload user data. Click \"Change inst\" button to refresh data!!!", Alert.AlertType.INFORMATION);
         }
     }
 
@@ -1053,13 +1057,13 @@ public class MainApp extends Components {
 //        getSpinningLoader(stage, loading);
 //    }
 
-    public static JSONArray getAcsEvents(String startDate, String endDate) {
+    public static JSONArray getAcsEvents(String startDate, String endDate, Integer minor) {
         JSONArray sentArray = new JSONArray();
 
         int searchResultPosition = 0;
         String resultStatus = "MORE";
         while (!(resultStatus.equals("OK") || resultStatus.equals("NO MATCH"))) {
-            String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":" + searchResultPosition + ",\"maxResults\":1000,\"major\":5,\"minor\":75,\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
+            String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":" + searchResultPosition + ",\"maxResults\":1000,\"major\":5,\"minor\":" + minor + ",\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
             DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
             if (responseBody.getContentType().startsWith("Request failed")) {
                 logger.error("AcsEvent error: " + requestBody);
