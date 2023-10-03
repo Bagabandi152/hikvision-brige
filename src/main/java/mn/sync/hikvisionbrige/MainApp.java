@@ -1120,7 +1120,6 @@ public class MainApp extends Components {
             JSONObject empPhoto = jsonObject.isNull("empphoto") ? null : jsonObject.getJSONObject("empphoto");
             boolean bbb = inputCardNo == null || inputCardNo.isEmpty() || inputCardNo.isBlank();
             JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, bbb ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
-            System.out.println("frtSentStatus123: " + frtSentStatus.getString("msg"));
             if (frtSentStatus.getString("code").startsWith("success") || (!bbb && frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("Face data is already existed."))) {
                 JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, bbb ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
                 if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {
