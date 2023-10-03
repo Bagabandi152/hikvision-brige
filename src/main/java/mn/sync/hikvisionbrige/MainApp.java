@@ -824,7 +824,6 @@ public class MainApp extends Components {
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode") + "\"}");
             }
 
-            System.out.println("cardnooooooooooooo: " + cardNo);
             String cardReqBody = "{\"CardInfo\":{\"employeeNo\":\"" + employeeNo + "\",\"cardNo\":\"" + cardNo + "\",\"cardType\":\"normalCard\"}}";
             DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT");
             if (saveUserCardRes.getContentType().startsWith("Request failed")) {
@@ -837,6 +836,8 @@ public class MainApp extends Components {
                 logger.error(saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode"));
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"" + saveUserCardResObj.getString("statusString") + ": " + saveUserCardResObj.getString("subStatusCode") + "\"}");
             }
+
+            logger.info("CardInfo successfully updated.");
         }
 
 
@@ -1117,9 +1118,11 @@ public class MainApp extends Components {
             return response;
         } else {
             JSONObject empPhoto = jsonObject.isNull("empphoto") ? null : jsonObject.getJSONObject("empphoto");
-            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, (inputCardNo == null || inputCardNo.isEmpty() || inputCardNo.isBlank()) ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
-            if (frtSentStatus.getString("code").startsWith("success")) {
-                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
+            boolean bbb = inputCardNo == null || inputCardNo.isEmpty() || inputCardNo.isBlank();
+            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, bbb ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
+            System.out.println("frtSentStatus123: " + frtSentStatus.getString("msg"));
+            if (frtSentStatus.getString("code").startsWith("success") || (!bbb && frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("Face data is already existed."))) {
+                JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, bbb ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
                 if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {
                     response.put("valid", true);
                     response.put("info", "Success.");
