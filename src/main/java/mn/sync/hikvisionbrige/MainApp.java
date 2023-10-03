@@ -411,7 +411,7 @@ public class MainApp extends Components {
             JSONObject sentStatus = null;
             for (int i = 0; i < otherDevEmpList.length(); i++) {
                 JSONObject jsonObject = otherDevEmpList.getJSONObject(i);
-                sentStatus = syncUserData(stage, jsonObject);
+                sentStatus = syncUserData(stage, jsonObject, null);
                 if (!sentStatus.getBoolean("valid")) {
                     isAllSent = false;
                     break;
@@ -446,7 +446,7 @@ public class MainApp extends Components {
             }
             JSONObject empDic = checkEmpDic(empHolder.getEmployee().getEmpId());
             if (empDic != null && empDic.getInt("empid") != empHolder.getEmployee().getEmpId()) {
-                syncUserData(stage, empDic);
+                syncUserData(stage, empDic, null);
             } else {
                 String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
                 DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST");
@@ -534,7 +534,7 @@ public class MainApp extends Components {
 
             JSONObject empDic = checkEmpDic(empHolder.getEmployee().getEmpId());
             if (empDic != null) {
-                syncUserData(stage, empDic);
+                syncUserData(stage, empDic, empCardTF.getText());
             } else {
                 sendUserData(stage, "", empCardTF.getText(), root);
             }
@@ -824,6 +824,7 @@ public class MainApp extends Components {
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"" + checkCardResObj.getString("statusString") + ": " + checkCardResObj.getString("subStatusCode") + "\"}");
             }
 
+            System.out.println("cardnooooooooooooo: " + cardNo);
             String cardReqBody = "{\"CardInfo\":{\"employeeNo\":\"" + employeeNo + "\",\"cardNo\":\"" + cardNo + "\",\"cardType\":\"normalCard\"}}";
             DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT");
             if (saveUserCardRes.getContentType().startsWith("Request failed")) {
@@ -1087,7 +1088,7 @@ public class MainApp extends Components {
         }
     }
 
-    public static JSONObject syncUserData(Stage stage, JSONObject jsonObject) {
+    public static JSONObject syncUserData(Stage stage, JSONObject jsonObject, String inputCardNo) {
 
         JSONObject response = new JSONObject();
         JSONObject employee = jsonObject.getJSONObject("employee");
@@ -1095,7 +1096,9 @@ public class MainApp extends Components {
             Boolean deleteUserFRTStatus = deleteEmpDataFaceRecogTerm(stage, jsonObject);
             if (deleteUserFRTStatus) {
                 response.put("info", "Success.");
-                logger.info("Successfully delete face data from FRT.");
+                response.put("valid", true);
+//                logger.info("Successfully delete face data from FRT.");
+                System.out.println("Successfully delete face data from FRT.");
                 return response;
 //                Boolean deleteUserERPStatus = deleteEmpDataERP(stage, jsonObject);
 //                response.put("valid", deleteUserERPStatus);
@@ -1114,7 +1117,7 @@ public class MainApp extends Components {
             return response;
         } else {
             JSONObject empPhoto = jsonObject.isNull("empphoto") ? null : jsonObject.getJSONObject("empphoto");
-            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
+            JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, (inputCardNo == null || inputCardNo.isEmpty() || inputCardNo.isBlank()) ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
             if (frtSentStatus.getString("code").startsWith("success")) {
                 JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno"));
                 if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {

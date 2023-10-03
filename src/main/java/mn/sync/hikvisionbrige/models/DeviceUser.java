@@ -46,7 +46,7 @@ public class DeviceUser {
 
         int searchResultPosition = 0;
         String resultStatus = "MORE";
-        while (!resultStatus.equals("OK")) {
+        while (!(resultStatus.equals("OK") || resultStatus.equals("NO MATCH"))) {
             String requestBody = "{\n" + "    \"UserInfoSearchCond\": {\n" + "        \"searchID\": \"1\",\n" + "        \"searchResultPosition\": " + searchResultPosition + ",\n" + "        \"maxResults\": 1000\n" + "    }\n" + "}";
             DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Search?format=json", requestBody, "application/json", "POST");
             if (responseBody.getContentType().startsWith("Request failed")) {
@@ -65,11 +65,11 @@ public class DeviceUser {
                         list.add(newDeviceUser);
                     }
                     searchResultPosition += userInfoSearch.getInt("numOfMatches");
-                    resultStatus = userInfoSearch.getString("responseStatusStrg");
                     logger.info("Device user list is successfully converted.");
                 } else {
                     logger.warn("UserInfo response hasn't attribute InfoList");
                 }
+                resultStatus = userInfoSearch.getString("responseStatusStrg");
             } catch (JSONException ex) {
                 logger.error("When convert UserInfo response to json, occurred error.");
                 ex.printStackTrace();
