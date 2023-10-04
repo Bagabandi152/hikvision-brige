@@ -26,4 +26,6 @@ public interface Functions {
     String convertImageToBase64(String imagePath);
 
     String convertImageUrlToBase64(String url);
+
+    String ZKTecoApiService(String API, String method, String type, String requestBody, Boolean auth);
 }

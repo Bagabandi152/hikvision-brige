@@ -245,5 +245,66 @@ public class ImplFunctions {
             }
             return base64Image;
         }
+
+        @Override
+        public String ZKTecoApiService(String API, String method, String type, String requestBody, Boolean auth) {
+            String strResponse = null;
+            try {
+                // Create the URL object
+                URL url = new URL(API);
+
+                // Create the HttpURLConnection object
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+                // Set the request method to POST
+                connection.setRequestMethod(method);
+
+                // Set request headers
+                connection.setRequestProperty("Content-Type", type);
+                if (auth) {
+                    String cookieValue = CookieHolder.getInstance().getCookie("login");
+                    connection.setRequestProperty("Cookie", "SessionID=" + cookieValue);
+                }
+
+                // Create the request body
+                if (!method.equals("GET") && !requestBody.isEmpty()) {
+                    // Enable output and send the request body
+                    connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Length", String.valueOf(requestBody.length()));
+                    OutputStream outputStream = connection.getOutputStream();
+                    System.out.println("ERP requestBody: " + requestBody);
+                    outputStream.write(requestBody.getBytes());
+                    outputStream.flush();
+                    outputStream.close();
+                }
+
+                // Get the response code
+                int responseCode = connection.getResponseCode();
+                System.out.println("ZKTeco response code: " + responseCode);
+                if (responseCode == 200) {
+                    // Read the response
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    String line;
+                    StringBuilder response = new StringBuilder();
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    // Print the response
+                    System.out.println("ZKTeco response: " + response);
+                    strResponse = response.toString();
+
+                    // Close the connection
+                    connection.disconnect();
+                } else {
+                    strResponse = "ZKTeco request failed with status code: " + responseCode;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return strResponse;
+        }
     };
 }

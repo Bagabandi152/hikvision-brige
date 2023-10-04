@@ -22,6 +22,7 @@ import java.util.Comparator;
 public class SyncEmpData {
     Integer deviceId;
     String deviceName;
+    Integer dicId;
     Integer empId;
     String empName;
     String empEngName;
@@ -29,9 +30,10 @@ public class SyncEmpData {
 
     private static final Logger logger = LogManager.getLogger(SyncEmpData.class);
 
-    public SyncEmpData(Integer deviceId, String deviceName, Integer empId, String empName, String empEngName, String identity) {
+    public SyncEmpData(Integer deviceId, String deviceName, Integer dicId, Integer empId, String empName, String empEngName, String identity) {
         this.deviceId = deviceId;
         this.deviceName = deviceName;
+        this.dicId = dicId;
         this.empId = empId;
         this.empName = empName;
         this.empEngName = empEngName;
@@ -59,7 +61,7 @@ public class SyncEmpData {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
                 if (jsonObject != null) {
                     JSONObject emp = jsonObject.isNull("employee") ? null : jsonObject.getJSONObject("employee");
-                    list.add(new SyncEmpData(jsonObject.getInt("deviceid"), jsonObject.getString("devicename"), jsonObject.getInt("empid"), emp == null ? "" : emp.getString("empfname"), emp == null ? "" : emp.getString("empfnameeng"), jsonObject.getString("identname")));
+                    list.add(new SyncEmpData(jsonObject.getInt("deviceid"), jsonObject.getString("devicename"), jsonObject.getInt("dicid"), jsonObject.getInt("empid"), emp == null ? "" : emp.getString("empfname"), emp == null ? "" : emp.getString("empfnameeng"), jsonObject.getString("identname")));
                 }
             }
             list.sort(Comparator.comparing(SyncEmpData::getIdentity));
@@ -71,6 +73,13 @@ public class SyncEmpData {
         return list;
     }
 
+    public Integer getDicId() {
+        return dicId;
+    }
+
+    public void setDicId(Integer dicId) {
+        this.dicId = dicId;
+    }
 
     public Integer getDeviceId() {
         return deviceId;

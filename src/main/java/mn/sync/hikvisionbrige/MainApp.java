@@ -398,7 +398,7 @@ public class MainApp extends Components {
             }
 
             Device activeDevice = deviceHolder.getDevice();
-            String rb = "{\"deviceid\":" + activeDevice.getId() + ", \"depid\":" + (selectedDep != null ? ("\"" + selectedDep.getDepId() + "\"") : selectedDep) + ", \"empid\":" + (selectedEmpData != null ? selectedEmpData.getEmpId() : selectedEmpData) + "}";
+            String rb = "{\"deviceid\":" + activeDevice.getId() + ", \"depid\":" + (selectedDep != null ? ("\"" + selectedDep.getDepId() + "\"") : selectedDep) + ", \"empid\":" + (selectedEmpData != null ? selectedEmpData.getEmpId() : selectedEmpData) + ", \"dicid\":" + (selectedEmpData != null ? selectedEmpData.getDicId() : selectedEmpData) + "}";
             String otherDevEmpListRes = ImplFunctions.functions.ErpApiService("/timerpt/deviceempdic/getotherdevemps", "POST", "application/json", rb, true);
             if (otherDevEmpListRes.startsWith("Request failed")) {
                 logger.error("Get other device employees error: " + otherDevEmpListRes);
@@ -650,6 +650,8 @@ public class MainApp extends Components {
             System.out.println("startDate: " + startDate);
             System.out.println("endDate: " + endDate);
 
+            JSONArray zkTimeLogs = getZkTimeLogs(startDate, endDate);
+
             JSONArray sentArray = getAcsEvents(startDate, endDate, eventType.getId());
 
             Device activeDevice = deviceHolder.getDevice();
@@ -860,7 +862,7 @@ public class MainApp extends Components {
             if (checkFaceResObj.getString("statusString").equals("OK")) {
                 if (checkFaceResObj.getString("responseStatusStrg").equals("OK")) {
                     logger.warn("Face data is already existed.");
-                    return new JSONObject("{\"code\": \"warning\", \"msg\": \"Face data is already existed.\"}");
+//                    return new JSONObject("{\"code\": \"warning\", \"msg\": \"Face data is already existed.\"}");
                 }
             } else {
                 logger.error(checkFaceResObj.getString("statusString") + ": " + checkFaceResObj.getString("subStatusCode"));
@@ -891,6 +893,14 @@ public class MainApp extends Components {
             }
 
             if (photoBytes != null) {
+
+                String delFaceReq = "{\"FPID\":[{\"value\":\"" + employeeNo + "\"}]}";
+                DigestResponseData delFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch/Delete?format=json&FDID=1&faceLibType=blackFD", delFaceReq, "application/json", "PUT");
+                if (delFaceRes.getContentType().startsWith("Request failed")) {
+                    logger.error("FDLib FaceDataRecord Error: " + delFaceRes.getBody());
+                    return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + delFaceRes.getBody() + "\"}");
+                }
+
                 formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
 
                 DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
@@ -1120,7 +1130,7 @@ public class MainApp extends Components {
             JSONObject empPhoto = jsonObject.isNull("empphoto") ? null : jsonObject.getJSONObject("empphoto");
             boolean bbb = inputCardNo == null || inputCardNo.isEmpty() || inputCardNo.isBlank();
             JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, jsonObject, bbb ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
-            if (frtSentStatus.getString("code").startsWith("success") || (!bbb && frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("Face data is already existed."))) {
+            if (frtSentStatus.getString("code").startsWith("success") || frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("Face data is already existed.")) {
                 JSONObject erpSentStatus = sendEmpDataERP(stage, jsonObject, bbb ? (empPhoto == null || empPhoto.isNull("cardno") ? "" : empPhoto.getString("cardno")) : inputCardNo);
                 if (erpSentStatus.getString("code").startsWith("success") || (erpSentStatus.getString("code").startsWith("error") && erpSentStatus.getString("msg").startsWith("Not found image")) || (frtSentStatus.getString("code").startsWith("warning") && frtSentStatus.getString("msg").endsWith("is already existed."))) {
                     response.put("valid", true);
@@ -1212,6 +1222,11 @@ public class MainApp extends Components {
         }
 
         return sentArray;
+    }
+
+    public static JSONArray getZkTimeLogs(String startDate, String endDate) {
+        JSONArray timeLogs = new JSONArray();
+        return timeLogs;
     }
 
     @Override
