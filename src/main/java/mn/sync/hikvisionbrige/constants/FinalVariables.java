@@ -13,5 +13,5 @@ public class FinalVariables {
     public static final String USER_NAME = "admin";
     public static final String PASS_WORD = "Sync@2023";
     public static final String ZK_USER_NAME = "1";
-    public static final String ZK_PWD = "1999456";
+    public static final String ZK_PWD = "199456";
 }

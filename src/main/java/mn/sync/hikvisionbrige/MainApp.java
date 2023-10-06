@@ -38,6 +38,11 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Objects;
+
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
+
 
 public class MainApp extends Components {
 
@@ -104,21 +109,28 @@ public class MainApp extends Components {
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
                 BASE_URL = "http://" + newValue.getIpAddress();
-                devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL));
-                FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
-                devUserComboBox.setConverter(new StringConverter<>() {
-                    @Override
-                    public String toString(DeviceUser object) {
-                        return object != null ? object.getName() : "";
-                    }
+                if (!newValue.getSerial().toLowerCase().startsWith("zkteco")) {
+                    devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL));
+                    FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
+                    devUserComboBox.setConverter(new StringConverter<>() {
+                        @Override
+                        public String toString(DeviceUser object) {
+                            return object != null ? object.getName() : "";
+                        }
 
-                    @Override
-                    public DeviceUser fromString(String string) {
-                        return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
-                    }
-                });
+                        @Override
+                        public DeviceUser fromString(String string) {
+                            return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
+                        }
+                    });
+                }
             }
             comboBox.setStyle("-fx-border-color: none;");
+            if (newValue != null && newValue.getSerial().toLowerCase().startsWith("zkteco")) {
+                if (!setZKTecoCookie()) {
+                    ImplFunctions.functions.showAlert("Error", "", "Cannot connect device! Check IP address.", Alert.AlertType.ERROR);
+                }
+            }
             deviceHolder.setDevice(newValue);
         });
         FxUtils.autoCompleteComboBoxPlus(comboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getIpAddress().equals(typedText));
@@ -360,10 +372,17 @@ public class MainApp extends Components {
             System.out.println("startDate: " + startDate);
             System.out.println("endDate: " + endDate);
 
-            JSONArray sentArray = getAcsEvents(startDate, endDate, 75); // 75 -> Face events
-            JSONArray cardEventsArray = getAcsEvents(startDate, endDate, 1); // 1 -> Card events
-            for (int i = 0; i < cardEventsArray.length(); i++) {
-                sentArray.put(cardEventsArray.getJSONObject(i));
+            JSONArray sentArray;
+            if (deviceHolder.getDevice() != null && deviceHolder.getDevice().getSerial().toLowerCase().startsWith("zkteco")) {
+                sentArray = getZkTimeLogs(startDate, endDate);
+            } else {
+                JSONArray faceEventsArray = getAcsEvents(startDate, endDate, 75); // 75 -> Face events
+                JSONArray cardEventsArray = getAcsEvents(startDate, endDate, 1); // 1 -> Card events
+                for (int i = 0; i < Objects.requireNonNull(cardEventsArray).length(); i++) {
+                    assert faceEventsArray != null;
+                    faceEventsArray.put(cardEventsArray.getJSONObject(i));
+                }
+                sentArray = faceEventsArray;
             }
 
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
@@ -1226,7 +1245,35 @@ public class MainApp extends Components {
 
     public static JSONArray getZkTimeLogs(String startDate, String endDate) {
         JSONArray timeLogs = new JSONArray();
+
         return timeLogs;
+    }
+
+    public static void ZKTecoLogin(String userName, String password) {
+//        MultipartBody.Builder formDataBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+//        formDataBuilder.addFormDataPart("username", FinalVariables.ZK_USER_NAME);
+//        formDataBuilder.addFormDataPart("userpwd", FinalVariables.ZK_PWD);
+//        String response = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/login", "GET", "text/html;", "{}", false);
+//        if (response.startsWith("Request failed")) {
+//            logger.error("Delete device employee data error: " + response);
+//            return;
+//        }
+    }
+
+    public static Boolean setZKTecoCookie() {
+        Boolean status = false;
+        try {
+            Connection loginConnect = Jsoup.connect(BASE_URL);
+            Connection.Response loginForm = loginConnect.method(Connection.Method.GET).execute();
+
+            if (loginForm.statusCode() == 200) {
+                ZKCookieHolder.getInstance().setCookie("cookie", loginForm.header("Set-Cookie"));
+                status = true;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return status;
     }
 
     @Override

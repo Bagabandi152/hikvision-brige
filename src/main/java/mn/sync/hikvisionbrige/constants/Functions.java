@@ -4,6 +4,8 @@ import javafx.scene.control.Alert;
 import mn.sync.hikvisionbrige.models.DigestResponseData;
 import org.json.JSONObject;
 
+import java.util.Map;
+
 /**
  * @author Bagaa
  * @project hikvision-brige
@@ -27,5 +29,5 @@ public interface Functions {
 
     String convertImageUrlToBase64(String url);
 
-    String ZKTecoApiService(String API, String method, String type, String requestBody, Boolean auth);
+    String ZKTecoApiService(String API, String method, String type, Map<String, String> requestBody);
 }

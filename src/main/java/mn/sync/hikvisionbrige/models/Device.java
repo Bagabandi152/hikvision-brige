@@ -3,7 +3,6 @@ package mn.sync.hikvisionbrige.models;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
-import mn.sync.hikvisionbrige.MainApp;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

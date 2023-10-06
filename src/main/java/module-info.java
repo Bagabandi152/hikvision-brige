@@ -7,6 +7,9 @@ module com.example.hikvisionbrige {
     requires log4j.api;
     requires log4j.core;
     requires java.prefs;
+    requires org.jsoup;
+    requires org.apache.tomcat.embed.core;
+
 
     opens mn.sync.hikvisionbrige to javafx.fxml;
     opens mn.sync.hikvisionbrige.models to javafx.base;

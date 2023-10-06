@@ -6,14 +6,18 @@ import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
+import mn.sync.hikvisionbrige.holders.ZKCookieHolder;
 import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
 import org.json.XML;
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
 
 import java.io.*;
 import java.net.*;
 import java.net.Authenticator;
 import java.util.Base64;
+import java.util.Map;
 
 /**
  * @author Bagaa
@@ -247,64 +251,56 @@ public class ImplFunctions {
         }
 
         @Override
-        public String ZKTecoApiService(String API, String method, String type, String requestBody, Boolean auth) {
-            String strResponse = null;
-            try {
-                // Create the URL object
-                URL url = new URL(API);
-
-                // Create the HttpURLConnection object
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-                // Set the request method to POST
-                connection.setRequestMethod(method);
-
-                // Set request headers
-                connection.setRequestProperty("Content-Type", type);
-                if (auth) {
-                    String cookieValue = CookieHolder.getInstance().getCookie("login");
-                    connection.setRequestProperty("Cookie", "SessionID=" + cookieValue);
-                }
-
-                // Create the request body
-                if (!method.equals("GET") && !requestBody.isEmpty()) {
-                    // Enable output and send the request body
-                    connection.setDoOutput(true);
-                    connection.setRequestProperty("Content-Length", String.valueOf(requestBody.length()));
-                    OutputStream outputStream = connection.getOutputStream();
-                    System.out.println("ERP requestBody: " + requestBody);
-                    outputStream.write(requestBody.getBytes());
-                    outputStream.flush();
-                    outputStream.close();
-                }
-
-                // Get the response code
-                int responseCode = connection.getResponseCode();
-                System.out.println("ZKTeco response code: " + responseCode);
-                if (responseCode == 200) {
-                    // Read the response
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    String line;
-                    StringBuilder response = new StringBuilder();
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    reader.close();
-
-                    // Print the response
-                    System.out.println("ZKTeco response: " + response);
-                    strResponse = response.toString();
-
-                    // Close the connection
-                    connection.disconnect();
-                } else {
-                    strResponse = "ZKTeco request failed with status code: " + responseCode;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+        public String ZKTecoApiService(String URL, String method, String type, Map<String, String> formData) {
+            Connection connection = Jsoup.connect(URL);
+            if (!formData.isEmpty()) {
+                connection.data(formData);
             }
 
-            return strResponse;
+            Connection.Method connMethod;
+            switch (method) {
+                case "POST": {
+                    connMethod = Connection.Method.POST;
+                    break;
+                }
+                case "PUT": {
+                    connMethod = Connection.Method.PUT;
+                    break;
+                }
+                case "DELETE": {
+                    connMethod = Connection.Method.DELETE;
+                    break;
+                }
+                case "HEAD": {
+                    connMethod = Connection.Method.HEAD;
+                    break;
+                }
+                case "OPTIONS": {
+                    connMethod = Connection.Method.OPTIONS;
+                    break;
+                }
+                case "TRACE": {
+                    connMethod = Connection.Method.TRACE;
+                    break;
+                }
+                default: {
+                    connMethod = Connection.Method.GET;
+                    break;
+                }
+            }
+            Connection.Response resultPageResponse = null;
+            try {
+                resultPageResponse = connection.header("Cookie", ZKCookieHolder.getInstance().getCookie("cookie"))
+                        .method(connMethod)
+                        .execute();
+
+                if (resultPageResponse.statusCode() == 200) {
+                    return resultPageResponse.body();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return resultPageResponse.statusMessage() + "/" + resultPageResponse.statusCode() + "/";
         }
     };
 }
