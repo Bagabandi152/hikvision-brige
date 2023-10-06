@@ -17,6 +17,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import mn.sync.hikvisionbrige.constants.Components;
+import mn.sync.hikvisionbrige.constants.FinalVariables;
 import mn.sync.hikvisionbrige.constants.FxUtils;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.*;
@@ -38,6 +39,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.jsoup.Connection;
@@ -107,30 +110,34 @@ public class MainApp extends Components {
         comboBox.setMaxWidth(295);
         comboBox.getStylesheets().add("CustomComboBox.css");
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+
             if (newValue != null) {
                 BASE_URL = "http://" + newValue.getIpAddress();
-                if (!newValue.getSerial().toLowerCase().startsWith("zkteco")) {
-                    devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL));
-                    FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
-                    devUserComboBox.setConverter(new StringConverter<>() {
-                        @Override
-                        public String toString(DeviceUser object) {
-                            return object != null ? object.getName() : "";
-                        }
 
-                        @Override
-                        public DeviceUser fromString(String string) {
-                            return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
-                        }
-                    });
+                if (newValue.getSerial().toLowerCase().startsWith("zkteco")) {
+                    if (!setZKTecoCookie()) {
+                        ImplFunctions.functions.showAlert("Error", "", "Cannot connect device! Check IP address.", Alert.AlertType.ERROR);
+                    } else {
+                        devUserComboBox.setItems(DeviceUser.getZKTecoUserList(BASE_URL));
+                    }
+                } else {
+                    devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL));
                 }
+                FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
+                devUserComboBox.setConverter(new StringConverter<>() {
+                    @Override
+                    public String toString(DeviceUser object) {
+                        return object != null ? object.getName() : "";
+                    }
+
+                    @Override
+                    public DeviceUser fromString(String string) {
+                        return devUserComboBox.getItems().stream().filter(object -> object.getName().equals(string)).findFirst().orElse(null);
+                    }
+                });
+
             }
             comboBox.setStyle("-fx-border-color: none;");
-            if (newValue != null && newValue.getSerial().toLowerCase().startsWith("zkteco")) {
-                if (!setZKTecoCookie()) {
-                    ImplFunctions.functions.showAlert("Error", "", "Cannot connect device! Check IP address.", Alert.AlertType.ERROR);
-                }
-            }
             deviceHolder.setDevice(newValue);
         });
         FxUtils.autoCompleteComboBoxPlus(comboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getIpAddress().equals(typedText));
@@ -1268,7 +1275,18 @@ public class MainApp extends Components {
 
             if (loginForm.statusCode() == 200) {
                 ZKCookieHolder.getInstance().setCookie("cookie", loginForm.header("Set-Cookie"));
-                status = true;
+
+                Map<String, String> formData = new HashMap<>();
+                formData.put("username", FinalVariables.ZK_USER_NAME);
+                formData.put("userpwd", FinalVariables.ZK_PWD);
+
+                String checkResponse = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/check", "POST", formData);
+                if (checkResponse.strip().startsWith("<HTML>")) {
+                    logger.info("ZKTeco device connection is success.");
+                    status = true;
+                } else {
+                    logger.info("ZKTeco device connection is not success.");
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();

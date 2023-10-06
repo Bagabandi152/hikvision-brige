@@ -10,9 +10,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.logging.log4j.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 /**
  * @author Bagaa
@@ -79,6 +85,98 @@ public class DeviceUser {
         return list;
     }
 
+    public static ArrayList getUsersFromHtml(String html) {
+        Document document = Jsoup.parse(html);
+        ArrayList<Element> tables = document.select("table");
+
+        Element tHead = null;
+        Element tBody = null;
+        if (tables.size() > 5) {
+            tHead = tables.get(4);
+            tBody = tables.get(5);
+        }
+
+        ArrayList<String> headers = new ArrayList<>();
+        if (tHead != null) {
+            Element tableHeader = tHead.getElementsByClass("table_header").get(0);
+            if (tableHeader != null) {
+                ArrayList<Element> headCols = tableHeader.getElementsByTag("td");
+                for (int i = 0; i < headCols.size(); i++) {
+                    if (i > 0) {
+                        Element elmCol = headCols.get(i);
+                        headers.add(elmCol.text());
+                    }
+                }
+            }
+        }
+
+        ArrayList<JSONObject> deviceUsers = new ArrayList<>();
+        if (tBody != null) {
+            ArrayList<Element> users = tBody.getElementsByTag("tr");
+            for (int i = 0; i < users.size(); i++) {
+                Element userElm = users.get(i);
+                if (userElm != null) {
+                    JSONObject userData = new JSONObject();
+                    ArrayList<Element> bodyCols = userElm.getElementsByTag("td");
+                    for (int j = 0; j < bodyCols.size(); j++) {
+                        Element elm = bodyCols.get(j);
+                        if (j == 0) {
+                            userData.put(elm.getElementsByTag("input").first().attr("name"), elm.getElementsByTag("input").first().attr("value"));
+                        } else if (j > 0 && j < bodyCols.size() - 1) {
+                            userData.put(headers.get(j - 1), elm.text());
+                        } else if (j == bodyCols.size() - 1) {
+                            userData.put(headers.get(j - 1), elm.getElementsByTag("a").first().attr("href"));
+                        }
+                    }
+                    deviceUsers.add(userData);
+                }
+            }
+        }
+
+        return deviceUsers;
+    }
+
+    public static ObservableList<DeviceUser> getZKTecoUserList(String BASE_URL) {
+        ObservableList<DeviceUser> list = FXCollections.observableArrayList();
+
+        ArrayList<JSONObject> allUsers = new ArrayList<>();
+        int searchResultPosition = 0;
+        String resultStatus = "MORE";
+        while (!resultStatus.equals("OK")) {
+            String url = BASE_URL + "/csl/user?first= " + searchResultPosition + "&last= " + (searchResultPosition + 20);
+            String responseBody = ImplFunctions.functions.ZKTecoApiService(url, "GET", new HashMap<>());
+            ArrayList<JSONObject> pageUsers = getUsersFromHtml(responseBody);
+            allUsers.addAll(pageUsers);
+            if (pageUsers.size() < 20) {
+                resultStatus = "OK";
+            }
+            searchResultPosition += 20;
+        }
+
+        System.out.println("All users: " + allUsers.size());
+
+//            try {
+//                JSONObject userInfoSearch = new JSONObject(responseBody.getBody().toString()).getJSONObject("UserInfoSearch");
+//                if (userInfoSearch.has("UserInfo")) {
+//                    JSONArray responseJson = userInfoSearch.getJSONArray("UserInfo");
+//                    for (int i = 0; i < responseJson.length(); i++) {
+//                        JSONObject jo = responseJson.getJSONObject(i);
+//                        DeviceUser newDeviceUser = new DeviceUser(jo.getString("employeeNo"), jo.getString("name"), jo.getString("userType"), jo.getString("gender"), jo.getInt("numOfCard"), jo.getInt("numOfFace"));
+//                        list.add(newDeviceUser);
+//                    }
+//                    searchResultPosition += userInfoSearch.getInt("numOfMatches");
+//                    logger.info("Device user list is successfully converted.");
+//                } else {
+//                    logger.warn("UserInfo response hasn't attribute InfoList");
+//                }
+//                resultStatus = userInfoSearch.getString("responseStatusStrg");
+//            } catch (JSONException ex) {
+//                logger.error("When convert UserInfo response to json, occurred error.");
+//                ex.printStackTrace();
+//            }
+        list.sort(Comparator.comparing(DeviceUser::getName));
+        return list;
+    }
 
     /**
      * get field

@@ -251,7 +251,7 @@ public class ImplFunctions {
         }
 
         @Override
-        public String ZKTecoApiService(String URL, String method, String type, Map<String, String> formData) {
+        public String ZKTecoApiService(String URL, String method, Map<String, String> formData) {
             Connection connection = Jsoup.connect(URL);
             if (!formData.isEmpty()) {
                 connection.data(formData);
