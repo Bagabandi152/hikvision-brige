@@ -17,7 +17,6 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import mn.sync.hikvisionbrige.constants.Components;
-import mn.sync.hikvisionbrige.constants.FinalVariables;
 import mn.sync.hikvisionbrige.constants.FxUtils;
 import mn.sync.hikvisionbrige.constants.ImplFunctions;
 import mn.sync.hikvisionbrige.holders.*;
@@ -38,14 +37,12 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 public class MainApp extends Components {
 
@@ -70,8 +67,32 @@ public class MainApp extends Components {
         root.setSpacing(10);
         root.setPadding(new Insets(15, 25, 10, 25));
 
-        //Create ComboBox
+        //Combo Box
         ComboBox<InstShortInfo> instComboBox = new ComboBox<>();
+        ComboBox<Device> comboBox = new ComboBox<>();
+        ComboBox<Employee> empComboBox = new ComboBox<>();
+        ComboBox<Department> depComboBox = new ComboBox<>();
+        ComboBox<SyncEmpData> syncEmpDataComboBox = new ComboBox<>();
+        ComboBox<DeviceUser> devUserComboBox = new ComboBox<>();
+        ComboBox<EventType> eventTypeComboBox = new ComboBox();
+
+        //Buttons
+        Button changeBtn = new Button("Change inst");
+        Button syncBtn = new Button("Sync time data");
+        Button syncEmpData = new Button("Sync employee data");
+        Button newFaceBtn = new Button("Add face data");
+        Button newCardBtn = new Button("Add card");
+        Button uploadBtn = new Button("Upload");
+        Button uploadAllBtn = new Button("Upload all");
+        Button reSyncBtn = new Button("Patch to sync");
+
+        //TextField
+        TextField empCardTF = new TextField();
+
+        //DatePicker
+        DatePicker datePicker = new DatePicker();
+
+        //Create ComboBox
         instComboBox.setItems(InstShortInfo.getInstList());
         instComboBox.setPromptText("Select . . .");
         instComboBox.setMaxWidth(295);
@@ -95,7 +116,6 @@ public class MainApp extends Components {
 
         });
 
-        ComboBox<DeviceUser> devUserComboBox = new ComboBox<>();
         devUserComboBox.setPromptText("Select . . .");
         devUserComboBox.setMaxWidth(295);
         devUserComboBox.getStylesheets().add("CustomComboBox.css");
@@ -104,17 +124,22 @@ public class MainApp extends Components {
             deviceUserHolder.setDeviceUser(newValue);
         });
 
-        ComboBox<Device> comboBox = new ComboBox<>();
         comboBox.setItems(Device.getDeviceList());
         comboBox.setPromptText("Select . . .");
         comboBox.setMaxWidth(295);
         comboBox.getStylesheets().add("CustomComboBox.css");
         comboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-
+            deviceHolder.setDevice(newValue);
             if (newValue != null) {
                 BASE_URL = "http://" + newValue.getIpAddress();
 
                 if (newValue.getSerial().toLowerCase().startsWith("zkteco")) {
+                    syncEmpData.setDisable(true);
+                    newFaceBtn.setDisable(true);
+                    newCardBtn.setDisable(true);
+                    uploadBtn.setDisable(true);
+                    uploadAllBtn.setDisable(true);
+                    eventTypeComboBox.setDisable(true);
                     if (!setZKTecoCookie()) {
                         ImplFunctions.functions.showAlert("Error", "", "Cannot connect device! Check IP address.", Alert.AlertType.ERROR);
                     } else {
@@ -122,6 +147,12 @@ public class MainApp extends Components {
                     }
                 } else {
                     devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL));
+                    syncEmpData.setDisable(false);
+                    newFaceBtn.setDisable(false);
+                    newCardBtn.setDisable(false);
+                    uploadBtn.setDisable(false);
+                    uploadAllBtn.setDisable(false);
+                    eventTypeComboBox.setDisable(false);
                 }
                 FxUtils.autoCompleteComboBoxPlus(devUserComboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getEmployeeNo().equals(typedText));
                 devUserComboBox.setConverter(new StringConverter<>() {
@@ -138,7 +169,6 @@ public class MainApp extends Components {
 
             }
             comboBox.setStyle("-fx-border-color: none;");
-            deviceHolder.setDevice(newValue);
         });
         FxUtils.autoCompleteComboBoxPlus(comboBox, (typedText, itemToCompare) -> itemToCompare.getName().toLowerCase().contains(typedText.toLowerCase()) || itemToCompare.getIpAddress().equals(typedText));
         comboBox.setConverter(new StringConverter<>() {
@@ -154,7 +184,6 @@ public class MainApp extends Components {
 
         });
 
-        ComboBox<Department> depComboBox = new ComboBox<>();
         depComboBox.setItems(Department.getDepList());
         depComboBox.setPromptText("Select . . .");
         depComboBox.setMaxWidth(295);
@@ -177,7 +206,6 @@ public class MainApp extends Components {
 
         });
 
-        ComboBox<SyncEmpData> syncEmpDataComboBox = new ComboBox<>();
         syncEmpDataComboBox.setItems(SyncEmpData.getEmpDataList());
         syncEmpDataComboBox.setPromptText("Select . . .");
         syncEmpDataComboBox.setMaxWidth(295);
@@ -200,7 +228,6 @@ public class MainApp extends Components {
 
         });
 
-        ComboBox<Employee> empComboBox = new ComboBox<>();
         empComboBox.setItems(Employee.getEmpList());
         empComboBox.setPromptText("Select . . .");
         empComboBox.setMaxWidth(295);
@@ -268,7 +295,6 @@ public class MainApp extends Components {
         Label empCardLabel = new Label("Input card number:");
         empCardLabel.setFont(Font.font("", FontWeight.BOLD, FontPosture.REGULAR, 13));
 
-        TextField empCardTF = new TextField();
         empCardTF.setPrefWidth(295);
         empCardTF.textProperty().addListener((observable, oldValue, newValue) -> {
             if (!newValue.isEmpty()) {
@@ -301,7 +327,6 @@ public class MainApp extends Components {
         hBoxDU.setSpacing(10);
 
         //Create Button to change institution
-        Button changeBtn = new Button("Change inst");
         EventHandler<ActionEvent> changeInst = e -> {
             if (instHolder.getInst() == null) {
                 instComboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -327,7 +352,6 @@ public class MainApp extends Components {
         instBtn.getChildren().add(changeBtn);
 
         //Create Button to sync data
-        Button syncBtn = new Button("Sync time data");
         EventHandler<ActionEvent> syncEvent = e -> {
             if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -415,7 +439,6 @@ public class MainApp extends Components {
         hBoxBtnTop.getChildren().add(syncBtn);
 
         //Create Button to sync employee data
-        Button syncEmpData = new Button("Sync employee data");
         EventHandler syncEmpDataEvent = e -> {
             if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -457,7 +480,6 @@ public class MainApp extends Components {
         hBoxBtnTop.getChildren().add(syncEmpData);
 
         //Create Button to add new data
-        Button newFaceBtn = new Button("Add face data");
         EventHandler<ActionEvent> addEmpFaceEvent = e -> {
             if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -538,7 +560,6 @@ public class MainApp extends Components {
         newFaceBtn.setOnAction(addEmpFaceEvent);
         hBoxBtnDown.getChildren().add(newFaceBtn);
 
-        Button newCardBtn = new Button("Add card");
         EventHandler<ActionEvent> addEmpCardEvent = e -> {
             if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -569,7 +590,6 @@ public class MainApp extends Components {
         hBoxBtnDown.getChildren().add(newCardBtn);
 
         //Create Button to upload user on device to ERP
-        Button uploadBtn = new Button("Upload");
         EventHandler<ActionEvent> uploadEvent = e -> {
             if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -588,7 +608,6 @@ public class MainApp extends Components {
         uploadBtn.setOnAction(uploadEvent);
         hBoxDU.getChildren().add(uploadBtn);
 
-        Button uploadAllBtn = new Button("Upload all");
         EventHandler<ActionEvent> uploadAllEvent = e -> {
             if (BASE_URL.isEmpty() || BASE_URL.equals("http://")) {
                 comboBox.setStyle("-fx-border-color: #f00;-fx-border-radius: 3px;");
@@ -605,7 +624,6 @@ public class MainApp extends Components {
         reSyncVBox.setSpacing(10);
         FlowPane reSyncFP = new FlowPane();
         reSyncFP.setHgap(5);
-        DatePicker datePicker = new DatePicker();
         StringConverter<LocalDate> converter = new StringConverter<LocalDate>() {
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -629,7 +647,6 @@ public class MainApp extends Components {
         };
         datePicker.setConverter(converter);
 
-        ComboBox<EventType> eventTypeComboBox = new ComboBox();
         ObservableList<EventType> list = EventType.getEventTypes();
         eventTypeComboBox.setItems(list);
         eventTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -642,7 +659,6 @@ public class MainApp extends Components {
         eventTypeComboBox.setPrefWidth(150);
 
         //Create Button patch to sync time data
-        Button reSyncBtn = new Button("Patch to sync");
         EventHandler<ActionEvent> reSyncEvent = e -> {
             if (datePicker.getValue() == null || datePicker.getValue().toString().isEmpty()) {
                 logger.warn("Patch date field is required.");
@@ -676,9 +692,12 @@ public class MainApp extends Components {
             System.out.println("startDate: " + startDate);
             System.out.println("endDate: " + endDate);
 
-            JSONArray zkTimeLogs = getZkTimeLogs(startDate, endDate);
-
-            JSONArray sentArray = getAcsEvents(startDate, endDate, eventType.getId());
+            JSONArray sentArray;
+            if (deviceHolder.getDevice() != null && deviceHolder.getDevice().getSerial().toLowerCase().startsWith("zkteco")) {
+                sentArray = getZkTimeLogs(startDate, endDate);
+            } else {
+                sentArray = getAcsEvents(startDate, endDate, eventType.getId());
+            }
 
             Device activeDevice = deviceHolder.getDevice();
             String uploadResponse = ImplFunctions.functions.ErpApiService("/timerpt/deviceupload/inserttimedata", "POST", "application/json", "{\"deviceid\":" + activeDevice.getId() + ", \"timedata\":" + sentArray + "}", true);
@@ -868,7 +887,6 @@ public class MainApp extends Components {
             logger.info("CardInfo successfully updated.");
         }
 
-
         if ((data instanceof String && !data.toString().isEmpty()) || data instanceof JSONObject) {
 
             JSONObject setUserInfoResObj = new JSONObject(setUserInfoRes.getBody().toString());
@@ -996,7 +1014,6 @@ public class MainApp extends Components {
     }
 
     public static void sendUserData(Stage stage, String fileName, String cardNo, VBox root) {
-
         JSONObject frtSentStatus = sendEmpDataFaceRecogTerm(stage, fileName, cardNo);
         if (frtSentStatus.getString("code").startsWith("success")) {
             JSONObject erpSentStatus = sendEmpDataERP(stage, fileName, cardNo);
@@ -1252,19 +1269,69 @@ public class MainApp extends Components {
 
     public static JSONArray getZkTimeLogs(String startDate, String endDate) {
         JSONArray timeLogs = new JSONArray();
+        Map<String, String> formData = new HashMap<>();
+        formData.put("sdate", startDate.split("T")[0]);
+        formData.put("edate", endDate.split("T")[0]);
+        formData.put("period", "0");
+        ObservableList<DeviceUser> userList = DeviceUser.getZKTecoUserList(BASE_URL);
+        List<String> uidStrings = new ArrayList<>();
 
+        userList.forEach(du -> {
+            uidStrings.add(String.valueOf(du.getUID()));
+        });
+        formData.put("uid", String.valueOf(uidStrings));
+
+        String logResponse = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/query?action=run", "POST", formData);
+        if (logResponse.strip().startsWith("<HTML>")) {
+            logger.info("ZKTeco time log successfully fetched.");
+            timeLogs = getZkTimeLogFromHtml(logResponse);
+        } else {
+            logger.info("ZKTeco time log not successfully fetched.");
+        }
         return timeLogs;
     }
 
-    public static void ZKTecoLogin(String userName, String password) {
-//        MultipartBody.Builder formDataBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
-//        formDataBuilder.addFormDataPart("username", FinalVariables.ZK_USER_NAME);
-//        formDataBuilder.addFormDataPart("userpwd", FinalVariables.ZK_PWD);
-//        String response = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/login", "GET", "text/html;", "{}", false);
-//        if (response.startsWith("Request failed")) {
-//            logger.error("Delete device employee data error: " + response);
-//            return;
-//        }
+    public static JSONArray getZkTimeLogFromHtml(String html) {
+        JSONArray list = new JSONArray();
+
+        Document document = Jsoup.parse(html);
+        Element table = document.select("table").first();
+        Element tHead = table.getElementsByClass("table_header").first();
+        ArrayList<String> headers = new ArrayList<>();
+        if (tHead != null) {
+            ArrayList<Element> headCols = tHead.getElementsByTag("td");
+            for (int i = 0; i < headCols.size(); i++) {
+                Element elmCol = headCols.get(i);
+                headers.add(elmCol.text());
+            }
+        }
+
+        ArrayList<Element> tRows = table.getElementsByTag("tr");
+        JSONArray tmpList = new JSONArray();
+        for (int i = 0; i < tRows.size(); i++) {
+            if (i > 0) {
+                Element row = tRows.get(i);
+                if (row != null) {
+                    JSONObject logData = new JSONObject();
+                    ArrayList<Element> bodyCols = row.getElementsByTag("td");
+                    for (int j = 0; j < bodyCols.size(); j++) {
+                        Element elm = bodyCols.get(j);
+                        logData.put(headers.get(j), elm.text());
+                    }
+                    tmpList.put(logData);
+                }
+            }
+        }
+
+        for (int i = 0; i < tmpList.length(); i++) {
+            JSONObject jo = tmpList.getJSONObject(i);
+            JSONObject mapJo = new JSONObject();
+            mapJo.put("personid", jo.getString("ID Number"));
+            mapJo.put("time", jo.getString("Date") + " " + jo.getString("Time"));
+            list.put(mapJo);
+        }
+
+        return list;
     }
 
     public static Boolean setZKTecoCookie() {
@@ -1277,8 +1344,8 @@ public class MainApp extends Components {
                 ZKCookieHolder.getInstance().setCookie("cookie", loginForm.header("Set-Cookie"));
 
                 Map<String, String> formData = new HashMap<>();
-                formData.put("username", FinalVariables.ZK_USER_NAME);
-                formData.put("userpwd", FinalVariables.ZK_PWD);
+                formData.put("username", deviceHolder.getDevice().getUserName());
+                formData.put("userpwd", deviceHolder.getDevice().getUserPwd());
 
                 String checkResponse = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/check", "POST", formData);
                 if (checkResponse.strip().startsWith("<HTML>")) {

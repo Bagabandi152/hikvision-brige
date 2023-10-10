@@ -6,7 +6,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
+import mn.sync.hikvisionbrige.holders.DeviceHolder;
 import mn.sync.hikvisionbrige.holders.ZKCookieHolder;
+import mn.sync.hikvisionbrige.models.Device;
 import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
 import org.json.XML;
@@ -27,19 +29,23 @@ import java.util.Map;
  * @definition
  */
 public class ImplFunctions {
+    public static DeviceHolder deviceHolder = DeviceHolder.getInstance();
     public static Functions functions = new Functions() {
         @Override
         public DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod) {
+            System.out.println("Username: " + deviceHolder.getDevice().getUserName());
+            System.out.println("Userpwd: " + deviceHolder.getDevice().getUserPwd());
+
             // Set Digest authentication credentials
             Authenticator.setDefault(new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(FinalVariables.USER_NAME, FinalVariables.PASS_WORD.toCharArray());
+                    return new PasswordAuthentication(deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd().toCharArray());
                 }
             });
 
             // Create OkHttpClient
-            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(FinalVariables.USER_NAME, FinalVariables.PASS_WORD))).retryOnConnectionFailure(true).build();
+            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd()))).retryOnConnectionFailure(true).build();
 
             // Define the request body (for POST requests)
             MediaType mediaType = MediaType.parse(type);
@@ -109,6 +115,12 @@ public class ImplFunctions {
                 digestResponseData.setBody("Cannot connect to device!");
             } catch (IOException ex) {
                 ex.printStackTrace();
+                digestResponseData.setContentType("Request failed");
+                digestResponseData.setBody("Cannot connect to device!");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                digestResponseData.setContentType("Request failed");
+                digestResponseData.setBody("Cannot connect to device!");
             }
             return digestResponseData;
         }

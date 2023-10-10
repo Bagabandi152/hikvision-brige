@@ -24,16 +24,20 @@ public class Device {
     String ipAddress;
     String name;
     String serial;
+    String userName;
+    String userPwd;
 
-    public Device(Integer id, String ipAddress, String name, String serial) {
+    public Device(Integer id, String ipAddress, String name, String serial, String userName, String userPwd) {
         this.id = id;
         this.ipAddress = ipAddress;
         this.name = name;
         this.serial = serial;
+        this.userName = userName;
+        this.userPwd = userPwd;
     }
 
     public Device() {
-        this(-1, "", "", "");
+        this(-1, "", "", "", "", "");
     }
 
     private static Logger logger = LogManager.getLogger(Device.class);
@@ -102,6 +106,22 @@ public class Device {
         this.serial = serial;
     }
 
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserPwd() {
+        return userPwd;
+    }
+
+    public void setUserPwd(String userPwd) {
+        this.userPwd = userPwd;
+    }
+
     @Override
     public String toString() {
         return name;
@@ -127,7 +147,7 @@ public class Device {
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
                 if (!jsonObject.isNull("ipaddress") && !jsonObject.getString("ipaddress").isBlank() && !jsonObject.getString("ipaddress").isEmpty()) {
-                    list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial")));
+                    list.add(new Device(jsonObject.getInt("deviceid"), jsonObject.getString("ipaddress"), jsonObject.getString("devicename"), jsonObject.getString("deviceserial"), jsonObject.getString("username"), jsonObject.getString("userpwd")));
                 }
             }
             list.sort(Comparator.comparing(Device::getName));

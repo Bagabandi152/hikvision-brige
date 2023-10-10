@@ -13,7 +13,6 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.logging.log4j.Logger;
 import org.jsoup.Jsoup;
@@ -34,6 +33,7 @@ public class DeviceUser {
     String gender;
     Integer numOfCard;
     Integer numOfFace;
+    Integer UID;
 
     private static final Logger logger = LogManager.getLogger(MainApp.class);
 
@@ -153,29 +153,23 @@ public class DeviceUser {
             searchResultPosition += 20;
         }
 
-        System.out.println("All users: " + allUsers.size());
+        for (int i = 0; i < allUsers.size(); i++) {
+            JSONObject jo = allUsers.get(i);
+            DeviceUser newDeviceUser = new DeviceUser(jo.getString("ID Number"), jo.getString("Name").equals("") ? jo.getString("ID Number") : jo.getString("Name"), jo.getString("Privilege"), "", jo.getString("Card").equals("0") ? 0 : 1, 0);
+            newDeviceUser.setUID(jo.getInt("uid"));
+            list.add(newDeviceUser);
+        }
 
-//            try {
-//                JSONObject userInfoSearch = new JSONObject(responseBody.getBody().toString()).getJSONObject("UserInfoSearch");
-//                if (userInfoSearch.has("UserInfo")) {
-//                    JSONArray responseJson = userInfoSearch.getJSONArray("UserInfo");
-//                    for (int i = 0; i < responseJson.length(); i++) {
-//                        JSONObject jo = responseJson.getJSONObject(i);
-//                        DeviceUser newDeviceUser = new DeviceUser(jo.getString("employeeNo"), jo.getString("name"), jo.getString("userType"), jo.getString("gender"), jo.getInt("numOfCard"), jo.getInt("numOfFace"));
-//                        list.add(newDeviceUser);
-//                    }
-//                    searchResultPosition += userInfoSearch.getInt("numOfMatches");
-//                    logger.info("Device user list is successfully converted.");
-//                } else {
-//                    logger.warn("UserInfo response hasn't attribute InfoList");
-//                }
-//                resultStatus = userInfoSearch.getString("responseStatusStrg");
-//            } catch (JSONException ex) {
-//                logger.error("When convert UserInfo response to json, occurred error.");
-//                ex.printStackTrace();
-//            }
         list.sort(Comparator.comparing(DeviceUser::getName));
         return list;
+    }
+
+    public Integer getUID() {
+        return UID;
+    }
+
+    public void setUID(Integer UID) {
+        this.UID = UID;
     }
 
     /**
