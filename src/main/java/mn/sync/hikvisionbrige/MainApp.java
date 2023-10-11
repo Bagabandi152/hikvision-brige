@@ -140,13 +140,13 @@ public class MainApp extends Components {
                     uploadBtn.setDisable(true);
                     uploadAllBtn.setDisable(true);
                     eventTypeComboBox.setDisable(true);
-                    if (!setZKTecoCookie()) {
+                    if (!setZKTecoCookie(newValue.getUserName(), newValue.getUserPwd(), BASE_URL)) {
                         ImplFunctions.functions.showAlert("Error", "", "Cannot connect device! Check IP address.", Alert.AlertType.ERROR);
                     } else {
                         devUserComboBox.setItems(DeviceUser.getZKTecoUserList(BASE_URL));
                     }
                 } else {
-                    devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL));
+                    devUserComboBox.setItems(DeviceUser.getDeviceUserList(BASE_URL, newValue.getUserName(), newValue.getUserPwd()));
                     syncEmpData.setDisable(false);
                     newFaceBtn.setDisable(false);
                     newCardBtn.setDisable(false);
@@ -405,10 +405,10 @@ public class MainApp extends Components {
 
             JSONArray sentArray;
             if (deviceHolder.getDevice() != null && deviceHolder.getDevice().getSerial().toLowerCase().startsWith("zkteco")) {
-                sentArray = getZkTimeLogs(startDate, endDate);
+                sentArray = getZkTimeLogs(startDate, endDate, BASE_URL);
             } else {
-                JSONArray faceEventsArray = getAcsEvents(startDate, endDate, 75); // 75 -> Face events
-                JSONArray cardEventsArray = getAcsEvents(startDate, endDate, 1); // 1 -> Card events
+                JSONArray faceEventsArray = getAcsEvents(startDate, endDate, 75, BASE_URL, deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd()); // 75 -> Face events
+                JSONArray cardEventsArray = getAcsEvents(startDate, endDate, 1, BASE_URL, deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd()); // 1 -> Card events
                 for (int i = 0; i < Objects.requireNonNull(cardEventsArray).length(); i++) {
                     assert faceEventsArray != null;
                     faceEventsArray.put(cardEventsArray.getJSONObject(i));
@@ -497,7 +497,7 @@ public class MainApp extends Components {
                 syncUserData(stage, empDic, null);
             } else {
                 String reqBody = "<CaptureFaceDataCond version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\"><captureInfrared>false</captureInfrared><dataType>binary</dataType></CaptureFaceDataCond>";
-                DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST");
+                DigestResponseData captureRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CaptureFaceData", reqBody, "text/plain", "POST", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
                 if (captureRes.getContentType().startsWith("Request failed")) {
                     logger.error("Capture face data error: " + captureRes.getBody());
                     ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + captureRes.getBody(), Alert.AlertType.ERROR);
@@ -614,7 +614,7 @@ public class MainApp extends Components {
                 logger.warn("Device field is required.");
                 return;
             }
-            uploadUserData(DeviceUser.getDeviceUserList(BASE_URL));
+            uploadUserData(DeviceUser.getDeviceUserList(BASE_URL, deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd()));
         };
         uploadAllBtn.setOnAction(uploadAllEvent);
         hBoxDU.getChildren().add(uploadAllBtn);
@@ -694,9 +694,9 @@ public class MainApp extends Components {
 
             JSONArray sentArray;
             if (deviceHolder.getDevice() != null && deviceHolder.getDevice().getSerial().toLowerCase().startsWith("zkteco")) {
-                sentArray = getZkTimeLogs(startDate, endDate);
+                sentArray = getZkTimeLogs(startDate, endDate, BASE_URL);
             } else {
-                sentArray = getAcsEvents(startDate, endDate, eventType.getId());
+                sentArray = getAcsEvents(startDate, endDate, eventType.getId(), BASE_URL, deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
             }
 
             Device activeDevice = deviceHolder.getDevice();
@@ -832,7 +832,7 @@ public class MainApp extends Components {
         String endTime = futureDateTime.format(formatter) + "23:59:59";
 
         String requestBody = "{\"UserInfo\": {\"employeeNo\": \"" + employeeNo + "\", \"name\": \"" + empName + "\", \"userType\": \"normal\", \"gender\": \"" + gender + "\", \"localUIRight\":false, \"maxOpenDoorTime\":0, \"Valid\": {\"enable\": true, \"beginTime\": \"" + beginTime + "\", \"endTime\": \"" + endTime + "\", \"timeType\":\"local\"}, \"doorRight\":\"1\",\"RightPlan\":[{\"doorNo\":1,\"planTemplateNo\":\"1\"}],\"userVerifyMode\":\"\"}}";
-        DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT");
+        DigestResponseData setUserInfoRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/SetUp?format=json", requestBody, "application/json", "PUT", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
 
         if (setUserInfoRes.getContentType().startsWith("Request failed")) {
             logger.error("UserInfo SetUp Error: " + setUserInfoRes.getBody());
@@ -842,7 +842,7 @@ public class MainApp extends Components {
         if (!(cardNo.isEmpty() || cardNo.isBlank())) {
 
             String checkCardReqBody = "{\n" + "  \"CardInfoSearchCond\":{\n" + "    \"searchID\":\"1\",\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"EmployeeNoList\":[{\n" + "      \"employeeNo\":\"" + employeeNo + "\"\n" + "    }]\n" + "  }\n" + "}";
-            DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST");
+            DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
 
             if (checkCardExist.getContentType().startsWith("Request failed")) {
                 logger.error("CardInfo Search Error: " + checkCardExist.getBody());
@@ -859,7 +859,7 @@ public class MainApp extends Components {
                     for (int i = 0; i < cardNoList.length(); i++) {
                         JSONObject cardObj = cardNoList.getJSONObject(i);
                         String delCardReqBody = "{\n" + "\t\"CardInfoDelCond\": {\n" + "\t\t\"CardNoList\": [{\n" + "\t\t\t\"cardNo\": \"" + (!cardObj.isNull("cardNo") ? cardObj.getString("cardNo") : "") + "\"\n" + "\t\t}]\n" + "\t}\n" + "}";
-                        DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Delete?format=json", delCardReqBody, "application/json", "PUT");
+                        DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Delete?format=json", delCardReqBody, "application/json", "PUT", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
                         if (saveUserCardRes.getContentType().startsWith("Request failed")) {
                             logger.error("CardInfo CardInfoRecord Delete Error: " + saveUserCardRes.getBody());
                             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserCardRes.getBody() + "\"}");
@@ -872,7 +872,7 @@ public class MainApp extends Components {
             }
 
             String cardReqBody = "{\"CardInfo\":{\"employeeNo\":\"" + employeeNo + "\",\"cardNo\":\"" + cardNo + "\",\"cardType\":\"normalCard\"}}";
-            DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT");
+            DigestResponseData saveUserCardRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/SetUp?format=json", cardReqBody, "application/json", "PUT", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
             if (saveUserCardRes.getContentType().startsWith("Request failed")) {
                 logger.error("CardInfo CardInfoRecord Error: " + saveUserCardRes.getBody());
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserCardRes.getBody() + "\"}");
@@ -896,7 +896,7 @@ public class MainApp extends Components {
             }
 
             String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + employeeNo + "\"\n" + "}";
-            DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
+            DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
             if (checkFaceExist.getContentType().startsWith("Request failed")) {
                 logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
                 return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
@@ -939,7 +939,7 @@ public class MainApp extends Components {
             if (photoBytes != null) {
 
                 String delFaceReq = "{\"FPID\":[{\"value\":\"" + employeeNo + "\"}]}";
-                DigestResponseData delFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch/Delete?format=json&FDID=1&faceLibType=blackFD", delFaceReq, "application/json", "PUT");
+                DigestResponseData delFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch/Delete?format=json&FDID=1&faceLibType=blackFD", delFaceReq, "application/json", "PUT", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
                 if (delFaceRes.getContentType().startsWith("Request failed")) {
                     logger.error("FDLib FaceDataRecord Error: " + delFaceRes.getBody());
                     return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + delFaceRes.getBody() + "\"}");
@@ -947,7 +947,7 @@ public class MainApp extends Components {
 
                 formDataBuilder.addFormDataPart("asd", fileName, RequestBody.create(photoBytes, MediaType.parse("image/jpeg")));
 
-                DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST");
+                DigestResponseData saveUserFaceRes = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json", formDataBuilder, "application/json", "POST", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
                 if (saveUserFaceRes.getContentType().startsWith("Request failed")) {
                     logger.error("FDLib FaceDataRecord Error: " + saveUserFaceRes.getBody());
                     return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + saveUserFaceRes.getBody() + "\"}");
@@ -1046,7 +1046,7 @@ public class MainApp extends Components {
         Integer deviceId = deviceHolder.getDevice().getId();
 
         String checkFaceReqBody = "{\n" + "    \"searchResultPosition\": 0,\n" + "    \"maxResults\": 30,\n" + "    \"faceLibType\": \"blackFD\",\n" + "    \"FDID\": \"1\",\n" + "    \"FPID\": \"" + deviceUser.getEmployeeNo() + "\"\n" + "}";
-        DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST");
+        DigestResponseData checkFaceExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/Intelligent/FDLib/FDSearch?format=json", checkFaceReqBody, "application/json", "POST", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
         if (checkFaceExist.getContentType().startsWith("Request failed")) {
             logger.error("FDLib FDSearch Error: " + checkFaceExist.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
@@ -1072,7 +1072,7 @@ public class MainApp extends Components {
         }
 
         String checkCardReqBody = "{\n" + "    \"CardInfoSearchCond\":{\n" + "        \"searchID\":\"1\",\n" + "        \"searchResultPosition\": 0,\n" + "        \"maxResults\": 30,\n" + "        \"EmployeeNoList\":[{\n" + "            \"employeeNo\":\"" + deviceUser.getEmployeeNo() + "\" \n" + "        }]\n" + "    }\n" + "}";
-        DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST");
+        DigestResponseData checkCardExist = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/CardInfo/Search?format=json", checkCardReqBody, "application/json", "POST", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
         if (checkCardExist.getContentType().startsWith("Request failed")) {
             logger.error(" CardInfoSearch Error on device user: " + checkFaceExist.getBody());
             return new JSONObject("{\"code\": \"error\", \"msg\": \"Request failed with status code: " + checkFaceExist.getBody() + "\"}");
@@ -1202,7 +1202,7 @@ public class MainApp extends Components {
     public static boolean deleteEmpDataFaceRecogTerm(Stage stage, JSONObject jsonObject) {
         Integer employeeNo = jsonObject.getInt("personid");
         String delUserBody = "{\"UserInfoDelCond\":{\"EmployeeNoList\":[{\"employeeNo\":\"" + employeeNo + "\"}]}}";
-        DigestResponseData deleteUserStatus = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Delete?format=json", delUserBody, "application/json", "PUT");
+        DigestResponseData deleteUserStatus = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Delete?format=json", delUserBody, "application/json", "PUT", deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd());
         if (deleteUserStatus.getContentType().startsWith("Request failed")) {
             logger.error("UserInfo Delete Error: " + deleteUserStatus);
             return false;
@@ -1225,14 +1225,14 @@ public class MainApp extends Components {
 //        getSpinningLoader(stage, loading);
 //    }
 
-    public static JSONArray getAcsEvents(String startDate, String endDate, Integer minor) {
+    public static JSONArray getAcsEvents(String startDate, String endDate, Integer minor, String url, String userName, String userPwd) {
         JSONArray sentArray = new JSONArray();
 
         int searchResultPosition = 0;
         String resultStatus = "MORE";
         while (!(resultStatus.equals("OK") || resultStatus.equals("NO MATCH"))) {
             String requestBody = "{\"AcsEventCond\":{\"searchID\":\"1\",\"searchResultPosition\":" + searchResultPosition + ",\"maxResults\":1000,\"major\":5,\"minor\":" + minor + ",\"startTime\":\"" + startDate + "\",\"endTime\":\"" + endDate + "\",\"thermometryUnit\":\"celcius\",\"currTemperature\":1}}";
-            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST");
+            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(url + "/ISAPI/AccessControl/AcsEvent?format=json", requestBody, "application/json", "POST", userName, userPwd);
             if (responseBody.getContentType().startsWith("Request failed")) {
                 logger.error("AcsEvent error: " + requestBody);
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);
@@ -1267,13 +1267,13 @@ public class MainApp extends Components {
         return sentArray;
     }
 
-    public static JSONArray getZkTimeLogs(String startDate, String endDate) {
+    public static JSONArray getZkTimeLogs(String startDate, String endDate, String url) {
         JSONArray timeLogs = new JSONArray();
         Map<String, String> formData = new HashMap<>();
         formData.put("sdate", startDate.split("T")[0]);
         formData.put("edate", endDate.split("T")[0]);
         formData.put("period", "0");
-        ObservableList<DeviceUser> userList = DeviceUser.getZKTecoUserList(BASE_URL);
+        ObservableList<DeviceUser> userList = DeviceUser.getZKTecoUserList(url);
         List<String> uidStrings = new ArrayList<>();
 
         userList.forEach(du -> {
@@ -1281,7 +1281,7 @@ public class MainApp extends Components {
         });
         formData.put("uid", String.valueOf(uidStrings));
 
-        String logResponse = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/query?action=run", "POST", formData);
+        String logResponse = ImplFunctions.functions.ZKTecoApiService(url + "/csl/query?action=run", "POST", formData);
         if (logResponse.strip().startsWith("<HTML>")) {
             logger.info("ZKTeco time log successfully fetched.");
             timeLogs = getZkTimeLogFromHtml(logResponse);
@@ -1334,20 +1334,20 @@ public class MainApp extends Components {
         return list;
     }
 
-    public static Boolean setZKTecoCookie() {
+    public static Boolean setZKTecoCookie(String userName, String userPwd, String url) {
         Boolean status = false;
         try {
-            Connection loginConnect = Jsoup.connect(BASE_URL);
+            Connection loginConnect = Jsoup.connect(url);
             Connection.Response loginForm = loginConnect.method(Connection.Method.GET).execute();
 
             if (loginForm.statusCode() == 200) {
                 ZKCookieHolder.getInstance().setCookie("cookie", loginForm.header("Set-Cookie"));
 
                 Map<String, String> formData = new HashMap<>();
-                formData.put("username", deviceHolder.getDevice().getUserName());
-                formData.put("userpwd", deviceHolder.getDevice().getUserPwd());
+                formData.put("username", userName);
+                formData.put("userpwd", userPwd);
 
-                String checkResponse = ImplFunctions.functions.ZKTecoApiService(BASE_URL + "/csl/check", "POST", formData);
+                String checkResponse = ImplFunctions.functions.ZKTecoApiService(url + "/csl/check", "POST", formData);
                 if (checkResponse.strip().startsWith("<HTML>")) {
                     logger.info("ZKTeco device connection is success.");
                     status = true;

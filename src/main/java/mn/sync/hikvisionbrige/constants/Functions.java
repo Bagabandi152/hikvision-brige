@@ -19,7 +19,7 @@ public interface Functions {
         return jsonObject.toString();
     }
 
-    DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod);
+    DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod, String userName, String userPwd);
 
     String ErpApiService(String API, String method, String type, String requestBody, Boolean auth);
 

@@ -47,14 +47,14 @@ public class DeviceUser {
         this.numOfFace = numOfFace;
     }
 
-    public static ObservableList<DeviceUser> getDeviceUserList(String BASE_URL) {
+    public static ObservableList<DeviceUser> getDeviceUserList(String BASE_URL, String userName, String userPwd) {
         ObservableList<DeviceUser> list = FXCollections.observableArrayList();
 
         int searchResultPosition = 0;
         String resultStatus = "MORE";
         while (!(resultStatus.equals("OK") || resultStatus.equals("NO MATCH"))) {
             String requestBody = "{\n" + "    \"UserInfoSearchCond\": {\n" + "        \"searchID\": \"1\",\n" + "        \"searchResultPosition\": " + searchResultPosition + ",\n" + "        \"maxResults\": 1000\n" + "    }\n" + "}";
-            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Search?format=json", requestBody, "application/json", "POST");
+            DigestResponseData responseBody = ImplFunctions.functions.DigestApiService(BASE_URL + "/ISAPI/AccessControl/UserInfo/Search?format=json", requestBody, "application/json", "POST", userName, userPwd);
             if (responseBody.getContentType().startsWith("Request failed")) {
                 logger.error("when get device user list, occurred error: " + requestBody);
                 ImplFunctions.functions.showAlert("Error", "", "Request failed with status code: " + responseBody.getBody(), Alert.AlertType.ERROR);

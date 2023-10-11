@@ -29,23 +29,22 @@ import java.util.Map;
  * @definition
  */
 public class ImplFunctions {
-    public static DeviceHolder deviceHolder = DeviceHolder.getInstance();
     public static Functions functions = new Functions() {
         @Override
-        public DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod) {
-            System.out.println("Username: " + deviceHolder.getDevice().getUserName());
-            System.out.println("Userpwd: " + deviceHolder.getDevice().getUserPwd());
+        public DigestResponseData DigestApiService(String API, Object requestBody, String type, String requestMethod, String userName, String userPwd) {
+            System.out.println("Username: " + userName);
+            System.out.println("Userpwd: " + userPwd);
 
             // Set Digest authentication credentials
             Authenticator.setDefault(new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd().toCharArray());
+                    return new PasswordAuthentication(userName, userPwd.toCharArray());
                 }
             });
 
             // Create OkHttpClient
-            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(deviceHolder.getDevice().getUserName(), deviceHolder.getDevice().getUserPwd()))).retryOnConnectionFailure(true).build();
+            OkHttpClient client = new OkHttpClient.Builder().authenticator(new DigestAuthenticator(new Credentials(userName, userPwd))).retryOnConnectionFailure(true).build();
 
             // Define the request body (for POST requests)
             MediaType mediaType = MediaType.parse(type);
@@ -112,15 +111,15 @@ public class ImplFunctions {
                 // Handle timeout exception
                 timeoutEx.printStackTrace();
                 digestResponseData.setContentType("Request failed");
-                digestResponseData.setBody("Cannot connect to device!");
+                digestResponseData.setBody("Cannot connect to device! Check IP address.");
             } catch (IOException ex) {
                 ex.printStackTrace();
                 digestResponseData.setContentType("Request failed");
-                digestResponseData.setBody("Cannot connect to device!");
+                digestResponseData.setBody("Cannot connect to device! Check IP address.");
             } catch (Exception ex) {
                 ex.printStackTrace();
                 digestResponseData.setContentType("Request failed");
-                digestResponseData.setBody("Cannot connect to device!");
+                digestResponseData.setBody("Cannot connect to device! Check IP address.");
             }
             return digestResponseData;
         }
