@@ -87,7 +87,6 @@ public class Login extends Application {
         gridPane.add(passwordLabel, 0, 1);
         gridPane.add(passwordField, 1, 1);
 
-
         //Create checkbox to remember username and password
         HBox hBox = new HBox();
         hBox.setSpacing(10);
