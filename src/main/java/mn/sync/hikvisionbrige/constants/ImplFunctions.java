@@ -6,9 +6,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import mn.sync.hikvisionbrige.holders.CookieHolder;
-import mn.sync.hikvisionbrige.holders.DeviceHolder;
 import mn.sync.hikvisionbrige.holders.ZKCookieHolder;
-import mn.sync.hikvisionbrige.models.Device;
 import mn.sync.hikvisionbrige.models.DigestResponseData;
 import okhttp3.*;
 import org.json.XML;
@@ -137,7 +135,14 @@ public class ImplFunctions {
                 // Set the request method to POST
                 connection.setRequestMethod(method);
 
+                // Set the connection timeout (in milliseconds)
+                connection.setConnectTimeout(180000);
+
+                // Set the read timeout (in milliseconds)
+                connection.setReadTimeout(180000);
+
                 // Set request headers
+                connection.setRequestProperty("Content-Type", type);
                 connection.setRequestProperty("Content-Type", type);
                 if (auth) {
                     String cookieValue = CookieHolder.getInstance().getCookie("login");
@@ -161,7 +166,7 @@ public class ImplFunctions {
                 System.out.println("ERP response code: " + responseCode);
                 if (responseCode == 200) {
                     // Read the response
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
                     String line;
                     StringBuilder response = new StringBuilder();
                     while ((line = reader.readLine()) != null) {
